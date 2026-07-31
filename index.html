@@ -144,6 +144,14 @@ function toMono44(audioBuffer, cb){
 }
 
 /* ================= Analyse Essentia ================= */
+function inferMetric(beats,strength){
+  var n=beats.length; var m=new Array(n);
+  if(n<8){ for(var i=0;i<n;i++) m[i]=0.5; return m; }
+  var best=0,bestSc=-1;
+  for(var o=0;o<4;o++){ var sc=0,c=0; for(var i=o;i<n;i+=4){ sc+=strength[i]||0; c++; } sc=c?sc/c:0; if(sc>bestSc){ bestSc=sc; best=o; } }
+  for(var i=0;i<n;i++){ var pos=((i-best)%4+4)%4; m[i]= pos===0?1.0 : (pos===2?0.6:0.3); }   /* "1" fort, "3" moyen, contretemps faible */
+  return m;
+}
 function analyzeEssentia(sig,sr,dur){
   var beats=[], bpm=0, conf=0;
   var vec=essentia.arrayToVector(sig);
@@ -156,7 +164,7 @@ function analyzeEssentia(sig,sr,dur){
   var env=computeEnv(sig,sr), se=strengthEnergy(env,beats);
   var iv=[]; for(var k=1;k<beats.length;k++) iv.push(beats[k]-beats[k-1]); iv.sort(function(a,b){ return a-b; });
   var period=iv.length?iv[Math.floor(iv.length/2)]:(bpm?60/bpm:0.5);
-  return {beats:beats,dur:dur,bpm:bpm,conf:conf,period:period,fps:se.fps,energy:se.energy,strength:se.strength,kEnv:env.kEnv,efps:env.fps,engine:"essentia"};
+  return {beats:beats,dur:dur,bpm:bpm,conf:conf,period:period,fps:se.fps,energy:se.energy,strength:se.strength,metric:inferMetric(beats,se.strength),kEnv:env.kEnv,efps:env.fps,engine:"essentia"};
 }
 
 /* ================= Analyse maison (repli) ================= */
@@ -191,7 +199,7 @@ function analyzeCustom(audio){
     var best=t,bd=winS; for(var k=oi;k<onsets.length;k++){ var o=onsets[k]; if(o>t+winS) break; var dd=Math.abs(o-t); if(dd<bd){bd=dd;best=o;} } return best; });
   var beats=[]; snapped.forEach(function(b){ b=+b.toFixed(3); if(!beats.length||b-beats[beats.length-1]>Math.min(0.12,period*0.4)) beats.push(b); });
   var se=strengthEnergy(env,beats);
-  return {beats:beats,dur:audio.duration,bpm:bpm,conf:0,period:period,fps:se.fps,energy:se.energy,strength:se.strength,kEnv:env.kEnv,efps:env.fps,engine:"maison"};
+  return {beats:beats,dur:audio.duration,bpm:bpm,conf:0,period:period,fps:se.fps,energy:se.energy,strength:se.strength,metric:inferMetric(beats,se.strength),kEnv:env.kEnv,efps:env.fps,engine:"maison"};
 }
 
 /* ================= Partition : coupes sur un nombre entier de temps ================= */
@@ -212,7 +220,8 @@ function buildPartition(){
     for(var k=bi; k<beats.length && beats[k]<=hi; k++){
       var s=(str[k]||0);
       var prox=1-Math.min(1,Math.abs(beats[k]-tgt)/span);
-      var score=s + prox*0.35;                 /* surtout la FORCE du temps, un peu la cible */
+      var mt=(A.metric&&A.metric[k]!=null)?A.metric[k]:0.4;
+      var score=s*0.7 + mt*0.9 + prox*0.25;    /* on coupe sur le "1" de la mesure, pas un contretemps */
       if(score>bestScore){ bestScore=score; bestK=k; }
     }
     if(bestK<0) bestK=bi;                       /* fenêtre sans temps : le 1er après le plancher (reste un vrai temps) */
