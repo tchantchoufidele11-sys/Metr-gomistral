@@ -51,7 +51,7 @@
 
   <div class="synb">
     <label>Sync</label>
-    <input type="range" id="sync" min="-300" max="300" step="10" value="0">
+    <input type="range" id="sync" min="-600" max="600" step="10" value="0">
     <span class="val" id="syncVal">0 ms</span>
   </div>
 
@@ -87,9 +87,10 @@
 /* ================= État ================= */
 var A=null, PHOTOS=[], SEGS=[], MOOD="cinema", raf=0, playing=false, SYNC=0;
 var AC=window.AudioContext||window.webkitAudioContext;
-var ctx=null, AUDIOBUF=null, srcNode=null, startCtxTime=0, pausedOffset=0;
-var masterGain=null, audioUnlocked=false;
-function ensureAudio(){ if(!ctx){ try{ ctx=new AC(); }catch(e){ return; } } if(!masterGain){ try{ masterGain=ctx.createGain(); masterGain.gain.value=1; masterGain.connect(ctx.destination); }catch(e){} } if(ctx.state==="suspended"){ try{ ctx.resume(); }catch(e){} } if(!audioUnlocked){ try{ var b=ctx.createBuffer(1,1,22050),s=ctx.createBufferSource(); s.buffer=b; s.connect(masterGain||ctx.destination); s.start(0); audioUnlocked=true; }catch(e){} } }
+var ctx=null, AUDIOBUF=null, pausedOffset=0;
+var audioEl=null, audioURL="";
+function ensureAudio(){ if(!ctx){ try{ ctx=new AC(); }catch(e){} } }   /* ctx = analyse seulement ; le son sort d'un lecteur audio classique (comme Suno) */
+function setMusicEl(file){ try{ if(audioURL) URL.revokeObjectURL(audioURL); }catch(e){} audioURL=URL.createObjectURL(file); audioEl=new Audio(audioURL); audioEl.preload="auto"; audioEl.onended=function(){ if(playing){ stopPlay(); resetBtn(); } }; }
 
 /* ================= Essentia (chargement asynchrone + repli) ================= */
 var essentia=null, ESSENTIA_STATE="loading";
@@ -105,10 +106,10 @@ var essentiaReady=new Promise(function(resolve){
 
 /* ================= Ambiances (hold = nombre entier de temps) ================= */
 var MOODS={
-  cinema:{minShot:0.80, holdBeats:2, accent:0.50, grade:{expo:0.02,contrast:0.12,sat:-0.04,temp:0.16,vig:0.36,grain:0.05,leak:0.10}, kb:0.10},
-  doux:{minShot:1.00, holdBeats:4, accent:0.58, grade:{expo:0.05,contrast:0.02,sat:0.06,temp:0.22,vig:0.20,grain:0.02,leak:0.20}, kb:0.06},
-  dynamique:{minShot:0.42, holdBeats:1, accent:0.42, grade:{expo:0.03,contrast:0.18,sat:0.14,temp:-0.06,vig:0.26,grain:0.07,leak:0.05}, kb:0.16},
-  voyage:{minShot:0.70, holdBeats:2, accent:0.50, grade:{expo:0.04,contrast:0.08,sat:0.11,temp:0.10,vig:0.22,grain:0.03,leak:0.13}, kb:0.11}
+  cinema:{minShot:0.90, targetSec:1.80, accent:0.50, grade:{expo:0.02,contrast:0.12,sat:-0.04,temp:0.16,vig:0.36,grain:0.05,leak:0.10}, kb:0.10},
+  doux:{minShot:1.20, targetSec:2.60, accent:0.58, grade:{expo:0.05,contrast:0.02,sat:0.06,temp:0.22,vig:0.20,grain:0.02,leak:0.20}, kb:0.06},
+  dynamique:{minShot:0.70, targetSec:1.05, accent:0.42, grade:{expo:0.03,contrast:0.18,sat:0.14,temp:-0.06,vig:0.26,grain:0.07,leak:0.05}, kb:0.16},
+  voyage:{minShot:0.85, targetSec:1.50, accent:0.50, grade:{expo:0.04,contrast:0.08,sat:0.11,temp:0.10,vig:0.22,grain:0.03,leak:0.13}, kb:0.11}
 };
 
 /* ================= Enveloppes (force des temps + énergie) ================= */
@@ -195,24 +196,33 @@ function analyzeCustom(audio){
 
 /* ================= Partition : coupes sur un nombre entier de temps ================= */
 function energyAt(t){ if(!A||!A.energy||!A.fps) return 0.5; var i=Math.round(t*A.fps); return A.energy[Math.max(0,Math.min(A.energy.length-1,i))]||0; }
+function nearestBeat(beats,t,maxDist){
+  if(!beats.length) return t;
+  var lo=0,hi=beats.length-1;
+  while(lo<hi){ var mid=(lo+hi)>>1; if(beats[mid]<t) lo=mid+1; else hi=mid; }
+  var best=t,bd=maxDist,cand=[beats[lo]]; if(lo>0) cand.push(beats[lo-1]);
+  for(var k=0;k<cand.length;k++){ var d=Math.abs(cand[k]-t); if(d<bd){ bd=d; best=cand[k]; } }
+  return best;
+}
 function buildPartition(){
   SEGS=[]; if(!A||!A.beats||A.beats.length<2) return;
   var M=MOODS[MOOD], beats=A.beats, dur=A.dur, period=A.period||0.5;
-  var cuts=[]; if(beats[0]>0.25) cuts.push(0);
-  var i=0, guardIter=0;
-  while(i<beats.length && guardIter++<5000){
-    var t=beats[i]; if(t>=dur-0.12) break;
-    cuts.push(t);
-    var e=energyAt(t);
-    var nb=M.holdBeats;
-    if(e>0.66) nb=Math.max(1,Math.floor(M.holdBeats/2)||1);
-    else if(e<0.30) nb=M.holdBeats*2;
-    while(nb*period<M.minShot && nb<16) nb++;
-    i+=nb;
+  var win=Math.max(0.12, Math.min(0.32, period*0.6));   /* on cale la coupe sur un temps proche */
+  var cuts=[0], lastCut=0, gi=0;
+  while(gi++<20000){
+    var e=energyAt(lastCut);
+    var target=M.targetSec*(e>0.66?0.72:(e<0.28?1.35:1.0));   /* plus court quand ça monte, plus long au calme */
+    if(target<M.minShot) target=M.minShot;
+    var want=lastCut+target;
+    if(want>=dur-0.15) break;
+    var cut=nearestBeat(beats,want,win);                      /* la coupe reste SUR la musique */
+    if(cut<=lastCut+M.minShot*0.6) cut=want;                  /* jamais deux coupes collées */
+    if(cut>=dur-0.15) break;
+    cuts.push(cut); lastCut=cut;
   }
   for(var c=0;c<cuts.length;c++){
     var start=cuts[c], end=(c+1<cuts.length?cuts[c+1]:dur);
-    if(end-start<0.12) continue;
+    if(end-start<0.15) continue;
     var bi=-1; for(var q=0;q<beats.length;q++){ if(Math.abs(beats[q]-start)<1e-3){bi=q;break;} }
     var strong=((bi>=0?(A.strength[bi]||0):0.5)>=M.accent) || energyAt(start)>0.55;
     SEGS.push({start:start,end:end,strong:strong,e:energyAt(start)});
@@ -299,26 +309,27 @@ function paintStrip(t){
 }
 
 /* ================= Horloge audio + boucle ================= */
-function outLatency(){ if(!ctx) return 0; var o=(typeof ctx.outputLatency==="number")?ctx.outputLatency:(ctx.baseLatency||0); return o||0; }
-function visualTime(){ return (ctx.currentTime-startCtxTime)-outLatency()+SYNC; }
-function stopSrc(){ if(srcNode){ try{ srcNode.onended=null; srcNode.stop(); }catch(e){} srcNode=null; } }
-function startAt(offset){
-  if(!ctx||!AUDIOBUF) return; stopSrc();
-  srcNode=ctx.createBufferSource(); srcNode.buffer=AUDIOBUF; srcNode.connect(masterGain||ctx.destination);
-  var when=ctx.currentTime+0.06; srcNode.start(when, Math.max(0,Math.min(AUDIOBUF.duration-0.01,offset))); startCtxTime=when-offset;
-  srcNode.onended=function(){ if(playing && (ctx.currentTime-startCtxTime)>=AUDIOBUF.duration-0.12){ stopPlay(); resetBtn(); } };
+function visualTime(){ return (audioEl?audioEl.currentTime:0) + SYNC; }
+function loop(){
+  if(!playing) return;
+  var t=visualTime(); if(t<0) t=0;
+  var r=renderBaseFrame(t);
+  if(glReady) drawGL(t,r.strongPulse);
+  paintStrip(t);
+  raf=requestAnimationFrame(loop);
 }
-function loop(){ if(!playing) return; var t=visualTime(); if(t<0) t=0;
-  if(AUDIOBUF && t>=AUDIOBUF.duration){ stopPlay(); resetBtn(); return; }
-  var r=renderBaseFrame(t); if(glReady) drawGL(t,r.strongPulse); paintStrip(t); raf=requestAnimationFrame(loop); }
 function startPlay(){
   if(!A){ setState("Choisis d'abord une musique."); return; }
   if(!PHOTOS.length){ setState("Ajoute au moins une photo."); return; }
-  buildPartition(); document.getElementById("empty").style.display="none";
-  var go=function(){ startAt(pausedOffset||0); playing=true; cancelAnimationFrame(raf); loop(); };
-  if(ctx.state==="suspended"){ ctx.resume().then(go).catch(go); } else go();
+  if(!audioEl){ setState("Musique non chargée."); return; }
+  buildPartition();
+  document.getElementById("empty").style.display="none";
+  try{ audioEl.currentTime=pausedOffset||0; }catch(e){}
+  var go=function(){ playing=true; cancelAnimationFrame(raf); loop(); };
+  var pr=audioEl.play();
+  if(pr&&pr.then) pr.then(go).catch(function(){ setState("Lecture bloquée — retape « Lire »."); }); else go();
 }
-function stopPlay(){ if(playing){ pausedOffset=Math.max(0,visualTime()); } playing=false; cancelAnimationFrame(raf); stopSrc(); }
+function stopPlay(){ if(playing && audioEl){ pausedOffset=Math.max(0,audioEl.currentTime); } playing=false; cancelAnimationFrame(raf); if(audioEl){ try{ audioEl.pause(); }catch(e){} } }
 function resetBtn(){ pausedOffset=0; document.getElementById("play").textContent="▶ Lire le film"; }
 
 /* ================= UI ================= */
@@ -339,7 +350,7 @@ syncEl.oninput=function(){ SYNC=(+syncEl.value)/1000; syncVal.textContent=(SYNC>
 document.querySelectorAll(".mood").forEach(function(btn){ btn.onclick=function(){ document.querySelectorAll(".mood").forEach(function(x){ x.classList.remove("on"); }); btn.classList.add("on"); MOOD=btn.dataset.mood; if(A&&PHOTOS.length){ buildPartition(); updateBadge(); paintStrip(playing?visualTime():0); } setState("Ambiance : <b>"+btn.textContent+"</b>"); }; });
 
 document.getElementById("fMusic").onchange=function(e){
-  var file=e.target.files&&e.target.files[0]; if(!file) return;
+  var file=e.target.files&&e.target.files[0]; if(!file) return; setMusicEl(file);
   if(!AC){ setState("Web Audio indisponible."); return; }
   if(!ctx){ try{ ctx=new AC(); }catch(err){ setState("Audio indisponible."); return; } }
   setState("Décodage…");
