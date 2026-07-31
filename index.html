@@ -85,7 +85,7 @@
 <script>
 "use strict";
 /* ================= État ================= */
-var A=null, PHOTOS=[], SEGS=[], MOOD="cinema", raf=0, playing=false, SYNC=0;
+var A=null, PHOTOS=[], SEGS=[], MOOD="cinema", raf=0, playing=false, SYNC=0, LEAD=0.05;
 var AC=window.AudioContext||window.webkitAudioContext;
 var ctx=null, AUDIOBUF=null, pausedOffset=0;
 var audioEl=null, audioURL="";
@@ -156,7 +156,7 @@ function analyzeEssentia(sig,sr,dur){
   var env=computeEnv(sig,sr), se=strengthEnergy(env,beats);
   var iv=[]; for(var k=1;k<beats.length;k++) iv.push(beats[k]-beats[k-1]); iv.sort(function(a,b){ return a-b; });
   var period=iv.length?iv[Math.floor(iv.length/2)]:(bpm?60/bpm:0.5);
-  return {beats:beats,dur:dur,bpm:bpm,conf:conf,period:period,fps:se.fps,energy:se.energy,strength:se.strength,engine:"essentia"};
+  return {beats:beats,dur:dur,bpm:bpm,conf:conf,period:period,fps:se.fps,energy:se.energy,strength:se.strength,kEnv:env.kEnv,efps:env.fps,engine:"essentia"};
 }
 
 /* ================= Analyse maison (repli) ================= */
@@ -191,11 +191,13 @@ function analyzeCustom(audio){
     var best=t,bd=winS; for(var k=oi;k<onsets.length;k++){ var o=onsets[k]; if(o>t+winS) break; var dd=Math.abs(o-t); if(dd<bd){bd=dd;best=o;} } return best; });
   var beats=[]; snapped.forEach(function(b){ b=+b.toFixed(3); if(!beats.length||b-beats[beats.length-1]>Math.min(0.12,period*0.4)) beats.push(b); });
   var se=strengthEnergy(env,beats);
-  return {beats:beats,dur:audio.duration,bpm:bpm,conf:0,period:period,fps:se.fps,energy:se.energy,strength:se.strength,engine:"maison"};
+  return {beats:beats,dur:audio.duration,bpm:bpm,conf:0,period:period,fps:se.fps,energy:se.energy,strength:se.strength,kEnv:env.kEnv,efps:env.fps,engine:"maison"};
 }
 
 /* ================= Partition : coupes sur un nombre entier de temps ================= */
 function energyAt(t){ if(!A||!A.energy||!A.fps) return 0.5; var i=Math.round(t*A.fps); return A.energy[Math.max(0,Math.min(A.energy.length-1,i))]||0; }
+function snapKick(t){ if(!A||!A.kEnv||!A.efps) return t; var f=A.efps, i=Math.round(t*f), w=Math.round(0.06*f), bk=i, bv=-1;
+  for(var k=i-w;k<=i+w;k++){ if(k<0||k>=A.kEnv.length) continue; if(A.kEnv[k]>bv){ bv=A.kEnv[k]; bk=k; } } return bk/f; }
 function buildPartition(){
   SEGS=[]; if(!A||!A.beats||A.beats.length<2) return;
   var M=MOODS[MOOD], beats=A.beats, str=A.strength||[], dur=A.dur;
@@ -214,16 +216,15 @@ function buildPartition(){
       if(score>bestScore){ bestScore=score; bestK=k; }
     }
     if(bestK<0) bestK=bi;                       /* fenêtre sans temps : le 1er après le plancher (reste un vrai temps) */
-    var cut=beats[bestK];
+    var cut=snapKick(beats[bestK]);             /* on cale sur le VRAI coup de batterie, pas juste le tick */
     if(cut>=dur-0.30) break;
-    cuts.push(cut); lastCut=cut; bi=bestK+1;
+    cuts.push({t:cut, s:(str[bestK]||0)}); lastCut=cut; bi=bestK+1;
   }
-  var pts=[0].concat(cuts);                     /* 1er plan : du début au 1er accent */
+  var pts=[{t:0,s:0.6}].concat(cuts);           /* 1er plan : du début au 1er accent */
   for(var c=0;c<pts.length;c++){
-    var start=pts[c], end=(c+1<pts.length?pts[c+1]:dur);
+    var start=pts[c].t, end=(c+1<pts.length?pts[c+1].t:dur);
     if(end-start<0.4) continue;
-    var kk=-1; for(var q=0;q<beats.length;q++){ if(Math.abs(beats[q]-start)<1e-3){kk=q;break;} }
-    var strong=((kk>=0?(str[kk]||0):0.6)>=M.accent) || energyAt(start)>0.55;
+    var strong=(pts[c].s>=M.accent) || energyAt(start)>0.55;
     SEGS.push({start:start,end:end,strong:strong,e:energyAt(start)});
   }
   SEGS.forEach(function(sg,idx){ sg.img=PHOTOS.length?(idx%PHOTOS.length):-1;
@@ -308,7 +309,7 @@ function paintStrip(t){
 }
 
 /* ================= Horloge audio + boucle ================= */
-function visualTime(){ return (audioEl?audioEl.currentTime:0) + SYNC; }
+function visualTime(){ return (audioEl?audioEl.currentTime:0) + LEAD + SYNC; }
 function loop(){
   if(!playing) return;
   var t=visualTime(); if(t<0) t=0;
