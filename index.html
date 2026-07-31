@@ -144,6 +144,20 @@ function toMono44(audioBuffer, cb){
 }
 
 /* ================= Analyse Essentia ================= */
+function regularize(beats,period,dur,kEnv,efps){
+  if(!beats||beats.length<2||!period||!kEnv) return beats||[];
+  var per=period;
+  while(60/per>140 && per*2<2.0) per*=2;        /* tempo doublé (ex. 162) -> vrai battement */
+  while(60/per<60 && per/2>0.30) per/=2;
+  var steps=24, bestPh=0, bestSc=-1;            /* phase : on aligne la grille sur l'energie de grosse caisse */
+  for(var p=0;p<steps;p++){
+    var ph=(p/steps)*per, sc=0;
+    for(var t=ph;t<dur;t+=per){ var i=Math.round(t*efps); if(i>=0&&i<kEnv.length) sc+=kEnv[i]||0; }
+    if(sc>bestSc){ bestSc=sc; bestPh=ph; }
+  }
+  var g=[]; for(var t=bestPh;t<dur-0.05;t+=per) g.push(+t.toFixed(3));
+  return g.length>1?g:beats;
+}
 function analyzeEssentia(sig,sr,dur){
   var beats=[], bpm=0, conf=0;
   var vec=essentia.arrayToVector(sig);
@@ -153,10 +167,13 @@ function analyzeEssentia(sig,sr,dur){
   bpm=Math.round(r.bpm||0); conf=+(r.confidence||0);
   try{ if(r.ticks&&r.ticks.delete) r.ticks.delete(); }catch(e){}
   try{ if(vec&&vec.delete) vec.delete(); }catch(e){}
-  var env=computeEnv(sig,sr), se=strengthEnergy(env,beats);
+  var env=computeEnv(sig,sr);
   var iv=[]; for(var k=1;k<beats.length;k++) iv.push(beats[k]-beats[k-1]); iv.sort(function(a,b){ return a-b; });
   var period=iv.length?iv[Math.floor(iv.length/2)]:(bpm?60/bpm:0.5);
-  return {beats:beats,dur:dur,bpm:bpm,conf:conf,period:period,fps:se.fps,energy:se.energy,strength:se.strength,kEnv:env.kEnv,efps:env.fps,engine:"essentia"};
+  var grid=regularize(beats,period,dur,env.kEnv,env.fps);   /* grille reguliere calee sur les kicks : supprime les decrochages "par moments" */
+  var per2=(grid.length>1)?(grid[1]-grid[0]):period;
+  var se=strengthEnergy(env,grid);
+  return {beats:grid,dur:dur,bpm:Math.round(60/per2)||bpm,conf:conf,period:per2,fps:se.fps,energy:se.energy,strength:se.strength,kEnv:env.kEnv,efps:env.fps,engine:"essentia"};
 }
 
 /* ================= Analyse maison (repli) ================= */
