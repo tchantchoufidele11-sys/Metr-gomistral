@@ -106,10 +106,10 @@ var essentiaReady=new Promise(function(resolve){
 
 /* ================= Ambiances (hold = nombre entier de temps) ================= */
 var MOODS={
-  cinema:{minShot:0.90, targetSec:1.80, accent:0.50, grade:{expo:0.02,contrast:0.12,sat:-0.04,temp:0.16,vig:0.36,grain:0.05,leak:0.10}, kb:0.10},
-  doux:{minShot:1.20, targetSec:2.60, accent:0.58, grade:{expo:0.05,contrast:0.02,sat:0.06,temp:0.22,vig:0.20,grain:0.02,leak:0.20}, kb:0.06},
-  dynamique:{minShot:0.70, targetSec:1.05, accent:0.42, grade:{expo:0.03,contrast:0.18,sat:0.14,temp:-0.06,vig:0.26,grain:0.07,leak:0.05}, kb:0.16},
-  voyage:{minShot:0.85, targetSec:1.50, accent:0.50, grade:{expo:0.04,contrast:0.08,sat:0.11,temp:0.10,vig:0.22,grain:0.03,leak:0.13}, kb:0.11}
+  cinema:{minSec:2.0, tgtSec:2.8, maxSec:4.0, accent:0.50, grade:{expo:0.02,contrast:0.12,sat:-0.04,temp:0.16,vig:0.36,grain:0.05,leak:0.10}, kb:0.10},
+  doux:{minSec:2.6, tgtSec:3.6, maxSec:5.0, accent:0.58, grade:{expo:0.05,contrast:0.02,sat:0.06,temp:0.22,vig:0.20,grain:0.02,leak:0.20}, kb:0.06},
+  dynamique:{minSec:1.4, tgtSec:1.9, maxSec:2.8, accent:0.42, grade:{expo:0.03,contrast:0.18,sat:0.14,temp:-0.06,vig:0.26,grain:0.07,leak:0.05}, kb:0.16},
+  voyage:{minSec:2.0, tgtSec:2.8, maxSec:4.0, accent:0.50, grade:{expo:0.04,contrast:0.08,sat:0.11,temp:0.10,vig:0.22,grain:0.03,leak:0.13}, kb:0.11}
 };
 
 /* ================= Enveloppes (force des temps + énergie) ================= */
@@ -196,39 +196,38 @@ function analyzeCustom(audio){
 
 /* ================= Partition : coupes sur un nombre entier de temps ================= */
 function energyAt(t){ if(!A||!A.energy||!A.fps) return 0.5; var i=Math.round(t*A.fps); return A.energy[Math.max(0,Math.min(A.energy.length-1,i))]||0; }
-function nearestBeat(beats,t,maxDist){
-  if(!beats.length) return t;
-  var lo=0,hi=beats.length-1;
-  while(lo<hi){ var mid=(lo+hi)>>1; if(beats[mid]<t) lo=mid+1; else hi=mid; }
-  var best=t,bd=maxDist,cand=[beats[lo]]; if(lo>0) cand.push(beats[lo-1]);
-  for(var k=0;k<cand.length;k++){ var d=Math.abs(cand[k]-t); if(d<bd){ bd=d; best=cand[k]; } }
-  return best;
-}
 function buildPartition(){
   SEGS=[]; if(!A||!A.beats||A.beats.length<2) return;
-  var M=MOODS[MOOD], beats=A.beats, dur=A.dur, period=A.period||0.5;
-  var win=Math.max(0.12, Math.min(0.32, period*0.6));   /* on cale la coupe sur un temps proche */
-  var cuts=[0], lastCut=0, gi=0;
+  var M=MOODS[MOOD], beats=A.beats, str=A.strength||[], dur=A.dur;
+  /* INVERSION : parmi les temps de [min,max] secondes, on prend le PLUS FORT.
+     -> chaque coupe tombe sur un accent réel ; jamais de seconde arbitraire. */
+  var cuts=[], lastCut=0, bi=0, gi=0, span=(M.maxSec-M.minSec)||1;
   while(gi++<20000){
-    var e=energyAt(lastCut);
-    var target=M.targetSec*(e>0.66?0.72:(e<0.28?1.35:1.0));   /* plus court quand ça monte, plus long au calme */
-    if(target<M.minShot) target=M.minShot;
-    var want=lastCut+target;
-    if(want>=dur-0.15) break;
-    var cut=nearestBeat(beats,want,win);                      /* la coupe reste SUR la musique */
-    if(cut<=lastCut+M.minShot*0.6) cut=want;                  /* jamais deux coupes collées */
-    if(cut>=dur-0.15) break;
-    cuts.push(cut); lastCut=cut;
+    var lo=lastCut+M.minSec, hi=lastCut+M.maxSec, tgt=lastCut+M.tgtSec;
+    while(bi<beats.length && beats[bi]<lo) bi++;
+    if(bi>=beats.length) break;
+    var bestK=-1, bestScore=-1;
+    for(var k=bi; k<beats.length && beats[k]<=hi; k++){
+      var s=(str[k]||0);
+      var prox=1-Math.min(1,Math.abs(beats[k]-tgt)/span);
+      var score=s + prox*0.35;                 /* surtout la FORCE du temps, un peu la cible */
+      if(score>bestScore){ bestScore=score; bestK=k; }
+    }
+    if(bestK<0) bestK=bi;                       /* fenêtre sans temps : le 1er après le plancher (reste un vrai temps) */
+    var cut=beats[bestK];
+    if(cut>=dur-0.30) break;
+    cuts.push(cut); lastCut=cut; bi=bestK+1;
   }
-  for(var c=0;c<cuts.length;c++){
-    var start=cuts[c], end=(c+1<cuts.length?cuts[c+1]:dur);
-    if(end-start<0.15) continue;
-    var bi=-1; for(var q=0;q<beats.length;q++){ if(Math.abs(beats[q]-start)<1e-3){bi=q;break;} }
-    var strong=((bi>=0?(A.strength[bi]||0):0.5)>=M.accent) || energyAt(start)>0.55;
+  var pts=[0].concat(cuts);                     /* 1er plan : du début au 1er accent */
+  for(var c=0;c<pts.length;c++){
+    var start=pts[c], end=(c+1<pts.length?pts[c+1]:dur);
+    if(end-start<0.4) continue;
+    var kk=-1; for(var q=0;q<beats.length;q++){ if(Math.abs(beats[q]-start)<1e-3){kk=q;break;} }
+    var strong=((kk>=0?(str[kk]||0):0.6)>=M.accent) || energyAt(start)>0.55;
     SEGS.push({start:start,end:end,strong:strong,e:energyAt(start)});
   }
   SEGS.forEach(function(sg,idx){ sg.img=PHOTOS.length?(idx%PHOTOS.length):-1;
-    sg.trans=(idx===0)?"none":(energyAt(sg.start)<0.28?"dissolve":"cut");
+    sg.trans=(idx===0)?"none":(energyAt(sg.start)<0.30?"dissolve":"cut");
     sg.kbDir=(idx%2===0)?1:-1; sg.kbPan=((idx*37)%100)/100; });
 }
 
@@ -248,7 +247,7 @@ function renderBaseFrame(t){
   bctx.fillStyle="#000"; bctx.fillRect(0,0,Wd,Hd);
   if(idx<0) return {strongPulse:0};
   var sg=SEGS[idx], prev=SEGS[idx-1], into=t-sg.start;
-  if(prev && sg.trans==="dissolve"){ var TR=Math.min(0.16,(sg.end-sg.start)*0.4);
+  if(prev && sg.trans==="dissolve"){ var TR=Math.min(0.35,(sg.end-sg.start)*0.4);
     if(into<TR){ drawSegAt(prev,prev.end-0.001); bctx.save(); bctx.globalAlpha=into/TR; drawSegAt(sg,t); bctx.restore(); } else drawSegAt(sg,t); }
   else drawSegAt(sg,t);
   return {strongPulse:(sg.strong && into<0.10)?(1-into/0.10):0};
