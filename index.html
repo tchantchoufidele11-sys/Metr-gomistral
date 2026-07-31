@@ -2,59 +2,390 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Test son — Magot</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<title>Studio Magot — test Essentia</title>
+<script src="https://cdn.jsdelivr.net/npm/essentia.js@0.1.3/dist/essentia-wasm.web.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/essentia.js@0.1.3/dist/essentia.js-core.js"></script>
 <style>
-  body{margin:0;background:#0a1024;color:#eef2f9;font:16px/1.5 -apple-system,system-ui,sans-serif}
-  .wrap{max-width:420px;margin:0 auto;padding:24px}
-  h1{font:700 20px Georgia,serif}
-  p{color:#a9b7d6;font-size:14px}
-  button{display:block;width:100%;margin:14px 0;padding:18px;border:0;border-radius:14px;font:700 16px system-ui;cursor:pointer}
-  .b1{background:linear-gradient(180deg,#e9b451,#d6952f);color:#241603}
-  .b2{background:#18234a;color:#eaf0fb;border:1px solid #2b3a63}
-  #log{margin-top:18px;background:#0e1630;border:1px solid #1d2a4d;border-radius:12px;padding:14px;font:13px ui-monospace,monospace;white-space:pre-wrap;min-height:80px}
-  .ok{color:#6fe0a0}.warn{color:#ffcf6b}
+  :root{--gold:#E0A33E;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:#0a1024;color:#eef2f9;font:15px/1.4 -apple-system,system-ui,Segoe UI,Roboto,sans-serif}
+  .wrap{max-width:430px;margin:0 auto;padding:14px 14px 46px}
+  h1{font:700 18px/1.2 Georgia,serif;color:#fff;margin:6px 0 2px}
+  .sub{color:#9fb0d0;font-size:12.5px;margin:0 0 14px}
+  .stageWrap{position:relative;width:100%;aspect-ratio:9/16;background:#000;border-radius:14px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+  canvas#gl,canvas#base{position:absolute;inset:0;width:100%;height:100%;display:block}
+  canvas#base{visibility:hidden}
+  .empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;color:#8fa0bf;font-size:13px}
+  .badge{position:absolute;left:10px;top:10px;background:rgba(6,12,26,.6);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:4px 10px;font:600 11px system-ui;color:#dfe7f6}
+  .strip{width:100%;height:46px;margin-top:8px;background:#0e1630;border:1px solid #1d2a4d;border-radius:10px;display:block}
+  .row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .btn{flex:1;min-width:120px;border:1px solid #26345c;background:#141d3a;color:#eaf0fb;border-radius:11px;padding:12px;font:600 13.5px system-ui;cursor:pointer}
+  .btn.gold{background:linear-gradient(180deg,#e9b451,#d6952f);color:#241603;border-color:#caa04a;flex-basis:100%}
+  .btn:active{transform:translateY(1px)}
+  .moods{display:flex;gap:7px;margin-top:12px}
+  .mood{flex:1;border:1px solid #26345c;background:#111a34;color:#c7d3ee;border-radius:11px;padding:10px 4px;font:600 12.5px system-ui;cursor:pointer}
+  .mood.on{background:var(--gold);color:#241603;border-color:var(--gold)}
+  .lab{font:600 11px system-ui;color:#8ea1c6;letter-spacing:.4px;text-transform:uppercase;margin:16px 0 6px}
+  .hint{color:#7d8cae;font-size:11.5px;margin-top:10px;line-height:1.5}
+  input[type=file]{display:none}
+  .synb{display:flex;align-items:center;gap:10px;margin-top:14px;background:#101a34;border:1px solid #223258;border-radius:11px;padding:10px 12px}
+  .synb label{font:600 12px system-ui;color:#c7d3ee;white-space:nowrap}
+  .synb input[type=range]{flex:1;accent-color:var(--gold)}
+  .synb .val{font:600 12px system-ui;color:var(--gold);width:64px;text-align:right}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Test du son</h1>
-  <p>Appuie sur un bouton. Tu dois entendre un « bip ». Monte le volume et vérifie l'interrupteur latéral (pas d'orange).</p>
-  <button class="b1" id="osc">🔊 Bip (oscillateur)</button>
-  <button class="b2" id="buf">🔊 Bip (buffer — comme le montage)</button>
-  <div id="log">Prêt.</div>
+  <h1>Studio Magot — test Essentia</h1>
+  <p class="sub">Détection des temps par Essentia (repli moteur maison si indisponible), coupes verrouillées sur un nombre entier de temps, effets GPU. Lecture en direct.</p>
+
+  <div class="stageWrap">
+    <canvas id="base" width="540" height="960"></canvas>
+    <canvas id="gl" width="540" height="960"></canvas>
+    <div class="badge" id="badge">—</div>
+    <div class="empty" id="empty">Ajoute une musique et des photos,<br>puis appuie sur « Lire le film ».</div>
+  </div>
+
+  <canvas class="strip" id="strip" width="800" height="92"></canvas>
+
+  <div class="synb">
+    <label>Sync</label>
+    <input type="range" id="sync" min="-300" max="300" step="10" value="0">
+    <span class="val" id="syncVal">0 ms</span>
+  </div>
+
+  <div class="lab">Ambiance — coupes toujours sur les temps</div>
+  <div class="moods" id="moods">
+    <button class="mood on" data-mood="cinema">Cinéma</button>
+    <button class="mood" data-mood="doux">Doux</button>
+    <button class="mood" data-mood="dynamique">Dynamique</button>
+    <button class="mood" data-mood="voyage">Voyage</button>
+  </div>
+
+  <div class="row">
+    <button class="btn" id="pickMusic">🎵 Musique</button>
+    <button class="btn" id="pickPhotos">🖼️ Photos</button>
+  </div>
+  <div class="row">
+    <button class="btn gold" id="play">▶ Lire le film</button>
+  </div>
+  <div class="row">
+    <button class="btn" id="restart">↺ Recommencer</button>
+    <button class="btn" id="clear">✕ Vider</button>
+  </div>
+
+  <div id="state" class="hint"></div>
+  <p class="hint">La bande montre les temps (dorés = temps forts) et les points de coupe. La tête de lecture blanche doit croiser une coupe pile quand la photo change. S'il reste un décalage, ajuste le curseur <b>Sync</b> pendant la lecture.</p>
+
+  <input type="file" id="fMusic">
+  <input type="file" id="fPhotos" accept="image/*" multiple>
 </div>
+
 <script>
 "use strict";
-var log=document.getElementById("log");
-function say(s,cls){ log.innerHTML+="\n"+(cls?'<span class="'+cls+'">'+s+"</span>":s); }
+/* ================= État ================= */
+var A=null, PHOTOS=[], SEGS=[], MOOD="cinema", raf=0, playing=false, SYNC=0;
 var AC=window.AudioContext||window.webkitAudioContext;
-var ctx=null;
-function ensure(){
-  if(!AC){ say("❌ Web Audio absent sur ce navigateur.","warn"); return null; }
-  if(!ctx){ ctx=new AC(); }
-  if(ctx.state==="suspended"){ ctx.resume(); }
-  return ctx;
+var ctx=null, AUDIOBUF=null, srcNode=null, startCtxTime=0, pausedOffset=0;
+var masterGain=null, audioUnlocked=false;
+function ensureAudio(){ if(!ctx){ try{ ctx=new AC(); }catch(e){ return; } } if(!masterGain){ try{ masterGain=ctx.createGain(); masterGain.gain.value=1; masterGain.connect(ctx.destination); }catch(e){} } if(ctx.state==="suspended"){ try{ ctx.resume(); }catch(e){} } if(!audioUnlocked){ try{ var b=ctx.createBuffer(1,1,22050),s=ctx.createBufferSource(); s.buffer=b; s.connect(masterGain||ctx.destination); s.start(0); audioUnlocked=true; }catch(e){} } }
+
+/* ================= Essentia (chargement asynchrone + repli) ================= */
+var essentia=null, ESSENTIA_STATE="loading";
+var essentiaReady=new Promise(function(resolve){
+  setTimeout(function(){
+    if(typeof EssentiaWASM==="undefined"||typeof Essentia==="undefined"){ ESSENTIA_STATE="fail"; resolve(false); return; }
+    try{
+      EssentiaWASM().then(function(wasm){ try{ essentia=new Essentia(wasm); ESSENTIA_STATE="ok"; resolve(true); }catch(e){ ESSENTIA_STATE="fail"; resolve(false); } })
+      .catch(function(){ ESSENTIA_STATE="fail"; resolve(false); });
+    }catch(e){ ESSENTIA_STATE="fail"; resolve(false); }
+  },0);
+});
+
+/* ================= Ambiances (hold = nombre entier de temps) ================= */
+var MOODS={
+  cinema:{minShot:0.80, holdBeats:2, accent:0.50, grade:{expo:0.02,contrast:0.12,sat:-0.04,temp:0.16,vig:0.36,grain:0.05,leak:0.10}, kb:0.10},
+  doux:{minShot:1.00, holdBeats:4, accent:0.58, grade:{expo:0.05,contrast:0.02,sat:0.06,temp:0.22,vig:0.20,grain:0.02,leak:0.20}, kb:0.06},
+  dynamique:{minShot:0.42, holdBeats:1, accent:0.42, grade:{expo:0.03,contrast:0.18,sat:0.14,temp:-0.06,vig:0.26,grain:0.07,leak:0.05}, kb:0.16},
+  voyage:{minShot:0.70, holdBeats:2, accent:0.50, grade:{expo:0.04,contrast:0.08,sat:0.11,temp:0.10,vig:0.22,grain:0.03,leak:0.13}, kb:0.11}
+};
+
+/* ================= Enveloppes (force des temps + énergie) ================= */
+function computeEnv(ch,sr){
+  var hop=512, fps=sr/hop, nF=Math.floor(ch.length/hop);
+  var kEnv=new Float32Array(nF),hEnv=new Float32Array(nF),bEnv=new Float32Array(nF);
+  var aLP=Math.exp(-2*Math.PI*120/sr), lp=0;
+  for(var f=0;f<nF;f++){ var s0=f*hop,s1=Math.min(ch.length,s0+hop),k=0,h=0,b=0;
+    for(var i=s0;i<s1;i++){ var x=ch[i]; lp=x*(1-aLP)+lp*aLP; var hi=x-lp; k+=Math.abs(lp); h+=Math.abs(hi); b+=Math.abs(x); }
+    var n=(s1-s0)||1; kEnv[f]=k/n; hEnv[f]=h/n; bEnv[f]=b/n; }
+  return {kEnv:kEnv,hEnv:hEnv,bEnv:bEnv,fps:fps,nF:nF};
 }
-document.getElementById("osc").onclick=function(){
-  var c=ensure(); if(!c) return;
-  say("état contexte : "+c.state);
-  var g=c.createGain(); g.gain.value=0.25; g.connect(c.destination);
-  var o=c.createOscillator(); o.type="sine"; o.frequency.value=440; o.connect(g);
-  var t=c.currentTime; o.start(t); o.stop(t+0.7);
-  say("▶ bip oscillateur lancé — tu dois l'entendre.","ok");
+function strengthEnergy(env,beats){
+  var kEnv=env.kEnv,bEnv=env.bEnv,fps=env.fps,nF=env.nF;
+  var strength=beats.map(function(t){ var i=Math.round(t*fps),m=0; for(var k=Math.max(0,i-2);k<Math.min(nF,i+3);k++) m=Math.max(m,kEnv[k]||0); return m; });
+  var smx=0; strength.forEach(function(x){ if(x>smx)smx=x; }); smx=smx||1; strength=strength.map(function(x){ return x/smx; });
+  var SM=Math.round(fps*0.9), eng=new Float32Array(nF);
+  for(var e=0;e<nF;e++){ var lo=Math.max(0,e-SM),hi=Math.min(nF,e+SM),mm=0; for(var w=lo;w<hi;w++) mm+=bEnv[w]; eng[e]=mm/((hi-lo)||1); }
+  var mx=0; for(var z=0;z<nF;z++) if(eng[z]>mx) mx=eng[z]; mx=mx||1;
+  var energy=Array.prototype.map.call(eng,function(x){ return x/mx; });
+  return {strength:strength, energy:energy, fps:fps};
+}
+
+/* ================= Ré-échantillonnage 44,1 kHz mono (attendu par Essentia) ================= */
+function toMono44(audioBuffer, cb){
+  var OAC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
+  if(!OAC){ cb(audioBuffer.getChannelData(0), audioBuffer.sampleRate); return; }
+  var len=Math.max(1,Math.ceil(audioBuffer.duration*44100));
+  var off; try{ off=new OAC(1,len,44100); }catch(e){ cb(audioBuffer.getChannelData(0), audioBuffer.sampleRate); return; }
+  var src=off.createBufferSource(); src.buffer=audioBuffer; src.connect(off.destination); src.start(0);
+  off.startRendering().then(function(rb){ cb(rb.getChannelData(0), 44100); }).catch(function(){ cb(audioBuffer.getChannelData(0), audioBuffer.sampleRate); });
+}
+
+/* ================= Analyse Essentia ================= */
+function analyzeEssentia(sig,sr,dur){
+  var beats=[], bpm=0, conf=0;
+  var vec=essentia.arrayToVector(sig);
+  var r=essentia.RhythmExtractor2013(vec, 208, "multifeature", 40);
+  var ticks=essentia.vectorToArray(r.ticks);
+  beats=Array.prototype.slice.call(ticks).map(function(x){ return +(+x).toFixed(3); });
+  bpm=Math.round(r.bpm||0); conf=+(r.confidence||0);
+  try{ if(r.ticks&&r.ticks.delete) r.ticks.delete(); }catch(e){}
+  try{ if(vec&&vec.delete) vec.delete(); }catch(e){}
+  var env=computeEnv(sig,sr), se=strengthEnergy(env,beats);
+  var iv=[]; for(var k=1;k<beats.length;k++) iv.push(beats[k]-beats[k-1]); iv.sort(function(a,b){ return a-b; });
+  var period=iv.length?iv[Math.floor(iv.length/2)]:(bpm?60/bpm:0.5);
+  return {beats:beats,dur:dur,bpm:bpm,conf:conf,period:period,fps:se.fps,energy:se.energy,strength:se.strength,engine:"essentia"};
+}
+
+/* ================= Analyse maison (repli) ================= */
+function analyzeCustom(audio){
+  var sr=audio.sampleRate, ch=audio.getChannelData(0);
+  var env=computeEnv(ch,sr); var kEnv=env.kEnv,hEnv=env.hEnv,bEnv=env.bEnv,fps=env.fps,nF=env.nF;
+  if(nF<8) return {beats:[],dur:audio.duration,bpm:0,fps:fps,energy:[],strength:[],period:0,engine:"maison"};
+  var onRaw=new Float32Array(nF);
+  for(var j=1;j<nF;j++){ onRaw[j]=Math.max(0,kEnv[j]-kEnv[j-1])*1.0 + Math.max(0,hEnv[j]-hEnv[j-1])*0.5; }
+  var W=Math.round(fps*0.5), on=new Float32Array(nF);
+  for(var a=0;a<nF;a++){ var lo=Math.max(0,a-W),hh=Math.min(nF,a+W),m=0; for(var c=lo;c<hh;c++) m+=onRaw[c]; m/=(hh-lo)||1; on[a]=Math.max(0,onRaw[a]-m); }
+  var minL=Math.round(fps*60/180), maxL=Math.round(fps*60/70);
+  function scoreLag(L){ if(L<1||L>=on.length) return 0; var s=0,cnt=0; for(var i=0;i+L<on.length;i++){ s+=on[i]*on[i+L]; cnt++; } return cnt?s/cnt:0; }
+  var bestLag=0,bestScore=-1;
+  for(var L=minL;L<=maxL;L++){ var sc=scoreLag(L); if(sc>bestScore){bestScore=sc;bestLag=L;} }
+  if(!bestLag) return {beats:[],dur:audio.duration,bpm:0,fps:fps,energy:[],strength:[],period:0,engine:"maison"};
+  function inBand(L){ var b=60/(L/fps); return b>=84&&b<=150; }
+  [Math.round(bestLag/2),bestLag*2,Math.round(bestLag*1.5),Math.round(bestLag/1.5)].forEach(function(L){
+    if(L>=minL&&L<=maxL){ var s=scoreLag(L);
+      if(inBand(L)&&!inBand(bestLag)&&s>bestScore*0.6){bestLag=L;bestScore=s;}
+      else if(inBand(L)===inBand(bestLag)&&s>bestScore){bestLag=L;bestScore=s;} } });
+  var period=bestLag/fps, bpm=Math.round(60/period);
+  var bestPh=0,phScore=-1;
+  for(var ph=0;ph<bestLag;ph++){ var s2=0; for(var q=ph;q<nF;q+=bestLag) s2+=kEnv[q]+0.5*hEnv[q]; if(s2>phScore){phScore=s2;bestPh=ph;} }
+  var mean=0; for(var u=0;u<nF;u++) mean+=on[u]; mean/=Math.max(1,nF);
+  var vr=0; for(var v=0;v<nF;v++){ var d=on[v]-mean; vr+=d*d; } vr/=Math.max(1,nF);
+  var thr=mean+Math.sqrt(vr)*0.7, guard=Math.max(1,Math.round(fps*0.09)), onsets=[];
+  for(var g=2;g<nF-2;g++){ if(on[g]>thr&&on[g]>=on[g-1]&&on[g]>on[g+1]&&on[g]>=on[g-2]&&on[g]>on[g+2]){ onsets.push(g/fps); g+=guard; } }
+  var grid=[]; for(var t=bestPh/fps;t<audio.duration;t+=period) grid.push(t);
+  var winS=period*0.42, oi=0;
+  var snapped=grid.map(function(t){ while(oi>0&&onsets[oi-1]>t-winS)oi--; while(oi<onsets.length&&onsets[oi]<t-winS)oi++;
+    var best=t,bd=winS; for(var k=oi;k<onsets.length;k++){ var o=onsets[k]; if(o>t+winS) break; var dd=Math.abs(o-t); if(dd<bd){bd=dd;best=o;} } return best; });
+  var beats=[]; snapped.forEach(function(b){ b=+b.toFixed(3); if(!beats.length||b-beats[beats.length-1]>Math.min(0.12,period*0.4)) beats.push(b); });
+  var se=strengthEnergy(env,beats);
+  return {beats:beats,dur:audio.duration,bpm:bpm,conf:0,period:period,fps:se.fps,energy:se.energy,strength:se.strength,engine:"maison"};
+}
+
+/* ================= Partition : coupes sur un nombre entier de temps ================= */
+function energyAt(t){ if(!A||!A.energy||!A.fps) return 0.5; var i=Math.round(t*A.fps); return A.energy[Math.max(0,Math.min(A.energy.length-1,i))]||0; }
+function buildPartition(){
+  SEGS=[]; if(!A||!A.beats||A.beats.length<2) return;
+  var M=MOODS[MOOD], beats=A.beats, dur=A.dur, period=A.period||0.5;
+  var cuts=[]; if(beats[0]>0.25) cuts.push(0);
+  var i=0, guardIter=0;
+  while(i<beats.length && guardIter++<5000){
+    var t=beats[i]; if(t>=dur-0.12) break;
+    cuts.push(t);
+    var e=energyAt(t);
+    var nb=M.holdBeats;
+    if(e>0.66) nb=Math.max(1,Math.floor(M.holdBeats/2)||1);
+    else if(e<0.30) nb=M.holdBeats*2;
+    while(nb*period<M.minShot && nb<16) nb++;
+    i+=nb;
+  }
+  for(var c=0;c<cuts.length;c++){
+    var start=cuts[c], end=(c+1<cuts.length?cuts[c+1]:dur);
+    if(end-start<0.12) continue;
+    var bi=-1; for(var q=0;q<beats.length;q++){ if(Math.abs(beats[q]-start)<1e-3){bi=q;break;} }
+    var strong=((bi>=0?(A.strength[bi]||0):0.5)>=M.accent) || energyAt(start)>0.55;
+    SEGS.push({start:start,end:end,strong:strong,e:energyAt(start)});
+  }
+  SEGS.forEach(function(sg,idx){ sg.img=PHOTOS.length?(idx%PHOTOS.length):-1;
+    sg.trans=(idx===0)?"none":(energyAt(sg.start)<0.28?"dissolve":"cut");
+    sg.kbDir=(idx%2===0)?1:-1; sg.kbPan=((idx*37)%100)/100; });
+}
+
+/* ================= Rendu 2D ================= */
+var base=document.getElementById("base"), bctx=base.getContext("2d");
+function drawCover(img,scale,px,py){ var Wd=base.width,Hd=base.height; var r=Math.max(Wd/img.width,Hd/img.height); var w=img.width*r*scale,h=img.height*r*scale; bctx.drawImage(img,(Wd-w)/2+px,(Hd-h)/2+py,w,h); }
+function drawSegAt(sg,t){
+  if(!sg||sg.img<0||!PHOTOS[sg.img]){ bctx.fillStyle="#000"; bctx.fillRect(0,0,base.width,base.height); return; }
+  var img=PHOTOS[sg.img].img, dur=Math.max(0.001,sg.end-sg.start), p=Math.max(0,Math.min(1,(t-sg.start)/dur));
+  var M=MOODS[MOOD], sc=1.04+M.kb*p, pan=(sg.kbPan-0.5)*base.width*0.06*sg.kbDir*(1-p);
+  drawCover(img,sc,pan,0);
+}
+function renderBaseFrame(t){
+  var Wd=base.width,Hd=base.height;
+  var idx=-1; for(var i=0;i<SEGS.length;i++){ if(t>=SEGS[i].start && t<SEGS[i].end){ idx=i; break; } }
+  if(idx<0 && SEGS.length){ idx=(t<SEGS[0].start)?0:SEGS.length-1; }
+  bctx.fillStyle="#000"; bctx.fillRect(0,0,Wd,Hd);
+  if(idx<0) return {strongPulse:0};
+  var sg=SEGS[idx], prev=SEGS[idx-1], into=t-sg.start;
+  if(prev && sg.trans==="dissolve"){ var TR=Math.min(0.16,(sg.end-sg.start)*0.4);
+    if(into<TR){ drawSegAt(prev,prev.end-0.001); bctx.save(); bctx.globalAlpha=into/TR; drawSegAt(sg,t); bctx.restore(); } else drawSegAt(sg,t); }
+  else drawSegAt(sg,t);
+  return {strongPulse:(sg.strong && into<0.10)?(1-into/0.10):0};
+}
+
+/* ================= Effets WebGL ================= */
+var gl=null, glProg=null, glTex=null, glU={}, glReady=false;
+var VS="attribute vec2 aPos;varying vec2 vUv;void main(){vUv=vec2((aPos.x+1.0)*0.5,1.0-(aPos.y+1.0)*0.5);gl_Position=vec4(aPos,0.0,1.0);}";
+var FS=["precision mediump float;varying vec2 vUv;uniform sampler2D tex;",
+"uniform float uTime,uGrain,uVig,uExpo,uContrast,uSat,uTemp,uLeak,uPulse;",
+"float rand(vec2 c){return fract(sin(dot(c,vec2(12.9898,78.233)))*43758.5453);}",
+"void main(){vec2 uv=vUv;vec3 c=texture2D(tex,uv).rgb;",
+" c*=(1.0+uExpo+uPulse*0.12);",
+" c.r+=uTemp*0.06; c.b-=uTemp*0.06;",
+" c=(c-0.5)*(1.0+uContrast)+0.5;",
+" float l=dot(c,vec3(0.299,0.587,0.114)); c=mix(vec3(l),c,1.0+uSat);",
+" float leak=smoothstep(0.85,0.15,distance(uv,vec2(0.82,0.16))); c+=vec3(1.0,0.62,0.32)*leak*uLeak;",
+" float d=distance(uv,vec2(0.5)); c*=1.0-uVig*smoothstep(0.32,0.92,d);",
+" float g=(rand(uv*vec2(uTime*7.0+1.0,uTime*5.0+3.0))-0.5)*uGrain; c+=g;",
+" gl_FragColor=vec4(clamp(c,0.0,1.0),1.0);}"].join("\n");
+function compile(g,type,src){ var s=g.createShader(type); g.shaderSource(s,src); g.compileShader(s); if(!g.getShaderParameter(s,g.COMPILE_STATUS)){ console.warn(g.getShaderInfoLog(s)); return null; } return s; }
+function initGL(){
+  var cv=document.getElementById("gl");
+  try{ gl=cv.getContext("webgl")||cv.getContext("experimental-webgl"); }catch(e){ gl=null; }
+  if(!gl){ document.getElementById("base").style.visibility="visible"; document.getElementById("gl").style.display="none"; return false; }
+  var vs=compile(gl,gl.VERTEX_SHADER,VS), fs=compile(gl,gl.FRAGMENT_SHADER,FS);
+  if(!vs||!fs){ gl=null; document.getElementById("base").style.visibility="visible"; document.getElementById("gl").style.display="none"; return false; }
+  glProg=gl.createProgram(); gl.attachShader(glProg,vs); gl.attachShader(glProg,fs); gl.linkProgram(glProg); gl.useProgram(glProg);
+  var buf=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]),gl.STATIC_DRAW);
+  var aPos=gl.getAttribLocation(glProg,"aPos"); gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos,2,gl.FLOAT,false,0,0);
+  glTex=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,glTex);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  ["uTime","uGrain","uVig","uExpo","uContrast","uSat","uTemp","uLeak","uPulse"].forEach(function(n){ glU[n]=gl.getUniformLocation(glProg,n); });
+  glReady=true; return true;
+}
+function drawGL(time,pulse){
+  if(!glReady) return; var G=MOODS[MOOD].grade;
+  gl.bindTexture(gl.TEXTURE_2D,glTex);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,base);
+  gl.uniform1f(glU.uTime,time); gl.uniform1f(glU.uGrain,G.grain); gl.uniform1f(glU.uVig,G.vig);
+  gl.uniform1f(glU.uExpo,G.expo); gl.uniform1f(glU.uContrast,G.contrast); gl.uniform1f(glU.uSat,G.sat);
+  gl.uniform1f(glU.uTemp,G.temp); gl.uniform1f(glU.uLeak,G.leak); gl.uniform1f(glU.uPulse,pulse||0);
+  gl.drawArrays(gl.TRIANGLES,0,6);
+}
+
+/* ================= Bande rythme ================= */
+var strip=document.getElementById("strip"), sctx=strip.getContext("2d");
+function paintStrip(t){
+  var Wd=strip.width,Hd=strip.height; sctx.clearRect(0,0,Wd,Hd); sctx.fillStyle="#0e1630"; sctx.fillRect(0,0,Wd,Hd);
+  if(!A||!A.dur) return; var dur=A.dur;
+  if(A.energy&&A.energy.length){ sctx.beginPath(); for(var x=0;x<Wd;x++){ var tt=x/Wd*dur; var i=Math.round(tt*A.fps); var e=A.energy[Math.max(0,Math.min(A.energy.length-1,i))]||0; var y=Hd-6-e*(Hd-14); if(x===0) sctx.moveTo(x,y); else sctx.lineTo(x,y); } sctx.strokeStyle="rgba(120,150,220,.5)"; sctx.lineWidth=1.5; sctx.stroke(); }
+  (A.beats||[]).forEach(function(b,i){ var x=b/dur*Wd; var s=A.strength[i]||0; var hgt=6+s*(Hd-16); var acc=s>=MOODS[MOOD].accent;
+    sctx.strokeStyle=acc?"rgba(224,163,62,.9)":"rgba(140,160,200,.35)"; sctx.lineWidth=acc?2:1; sctx.beginPath(); sctx.moveTo(x,Hd-4); sctx.lineTo(x,Hd-4-hgt); sctx.stroke(); });
+  SEGS.forEach(function(sg){ var x=sg.start/dur*Wd; sctx.fillStyle=sg.strong?"#E0A33E":"#7fd0ff"; sctx.fillRect(x-1,0,2,8); });
+  var px=t/dur*Wd; sctx.strokeStyle="#fff"; sctx.lineWidth=1.5; sctx.beginPath(); sctx.moveTo(px,0); sctx.lineTo(px,Hd); sctx.stroke();
+}
+
+/* ================= Horloge audio + boucle ================= */
+function outLatency(){ if(!ctx) return 0; var o=(typeof ctx.outputLatency==="number")?ctx.outputLatency:(ctx.baseLatency||0); return o||0; }
+function visualTime(){ return (ctx.currentTime-startCtxTime)-outLatency()+SYNC; }
+function stopSrc(){ if(srcNode){ try{ srcNode.onended=null; srcNode.stop(); }catch(e){} srcNode=null; } }
+function startAt(offset){
+  if(!ctx||!AUDIOBUF) return; stopSrc();
+  srcNode=ctx.createBufferSource(); srcNode.buffer=AUDIOBUF; srcNode.connect(masterGain||ctx.destination);
+  var when=ctx.currentTime+0.06; srcNode.start(when, Math.max(0,Math.min(AUDIOBUF.duration-0.01,offset))); startCtxTime=when-offset;
+  srcNode.onended=function(){ if(playing && (ctx.currentTime-startCtxTime)>=AUDIOBUF.duration-0.12){ stopPlay(); resetBtn(); } };
+}
+function loop(){ if(!playing) return; var t=visualTime(); if(t<0) t=0;
+  if(AUDIOBUF && t>=AUDIOBUF.duration){ stopPlay(); resetBtn(); return; }
+  var r=renderBaseFrame(t); if(glReady) drawGL(t,r.strongPulse); paintStrip(t); raf=requestAnimationFrame(loop); }
+function startPlay(){
+  if(!A){ setState("Choisis d'abord une musique."); return; }
+  if(!PHOTOS.length){ setState("Ajoute au moins une photo."); return; }
+  buildPartition(); document.getElementById("empty").style.display="none";
+  var go=function(){ startAt(pausedOffset||0); playing=true; cancelAnimationFrame(raf); loop(); };
+  if(ctx.state==="suspended"){ ctx.resume().then(go).catch(go); } else go();
+}
+function stopPlay(){ if(playing){ pausedOffset=Math.max(0,visualTime()); } playing=false; cancelAnimationFrame(raf); stopSrc(); }
+function resetBtn(){ pausedOffset=0; document.getElementById("play").textContent="▶ Lire le film"; }
+
+/* ================= UI ================= */
+function setState(s){ document.getElementById("state").innerHTML=s||""; }
+function updateBadge(){
+  var parts=[];
+  if(A){ parts.push(A.engine==="essentia"?"Essentia":"maison"); parts.push(A.bpm?(A.bpm+" BPM"):"rég."); if(A.engine==="essentia"&&A.conf) parts.push("conf "+A.conf.toFixed(1)); parts.push((A.beats?A.beats.length:0)+" temps"); }
+  parts.push(PHOTOS.length+" ph"); if(SEGS.length) parts.push(SEGS.length+" plans");
+  document.getElementById("badge").textContent=parts.join(" · ");
+}
+document.getElementById("pickMusic").onclick=function(){ ensureAudio(); document.getElementById("fMusic").click(); };
+document.getElementById("pickPhotos").onclick=function(){ document.getElementById("fPhotos").click(); };
+document.getElementById("play").onclick=function(){ var self=this; ensureAudio(); if(playing){ stopPlay(); self.textContent="▶ Reprendre"; } else { startPlay(); setTimeout(function(){ if(playing) self.textContent="⏸ Pause"; },30); } };
+document.getElementById("restart").onclick=function(){ if(!A||!PHOTOS.length) return; pausedOffset=0; buildPartition(); stopPlay(); startPlay(); setTimeout(function(){ if(playing) document.getElementById("play").textContent="⏸ Pause"; },30); };
+document.getElementById("clear").onclick=function(){ stopPlay(); PHOTOS.forEach(function(p){ try{URL.revokeObjectURL(p.url);}catch(e){} }); PHOTOS=[]; SEGS=[]; A=null; AUDIOBUF=null; pausedOffset=0; document.getElementById("empty").style.display="flex"; resetBtn(); setState(""); updateBadge(); paintStrip(0); bctx.clearRect(0,0,base.width,base.height); if(glReady){ gl.clear(gl.COLOR_BUFFER_BIT); } };
+var syncEl=document.getElementById("sync"), syncVal=document.getElementById("syncVal");
+syncEl.oninput=function(){ SYNC=(+syncEl.value)/1000; syncVal.textContent=(SYNC>0?"+":"")+Math.round(SYNC*1000)+" ms"; };
+document.querySelectorAll(".mood").forEach(function(btn){ btn.onclick=function(){ document.querySelectorAll(".mood").forEach(function(x){ x.classList.remove("on"); }); btn.classList.add("on"); MOOD=btn.dataset.mood; if(A&&PHOTOS.length){ buildPartition(); updateBadge(); paintStrip(playing?visualTime():0); } setState("Ambiance : <b>"+btn.textContent+"</b>"); }; });
+
+document.getElementById("fMusic").onchange=function(e){
+  var file=e.target.files&&e.target.files[0]; if(!file) return;
+  if(!AC){ setState("Web Audio indisponible."); return; }
+  if(!ctx){ try{ ctx=new AC(); }catch(err){ setState("Audio indisponible."); return; } }
+  setState("Décodage…");
+  var reader=new FileReader();
+  reader.onload=function(){
+    var onBuf=function(buf){ AUDIOBUF=buf;
+      setState("Chargement du moteur Essentia…");
+      essentiaReady.then(function(ok){
+        if(ok){ setState("Analyse Essentia… (quelques secondes)");
+          setTimeout(function(){ try{ toMono44(buf,function(sig,sr){
+              try{ A=analyzeEssentia(sig,sr,buf.duration); }
+              catch(err){ A=analyzeCustom(buf); setState("Essentia a échoué — repli moteur maison."); }
+              finishAnalyze(); }); }
+            catch(err){ A=analyzeCustom(buf); finishAnalyze(); } }, 30);
+        } else { setState("Essentia indisponible — moteur maison. Analyse…");
+          setTimeout(function(){ A=analyzeCustom(buf); finishAnalyze(); }, 30); }
+      });
+    };
+    var fail=function(){ setState("Fichier audio illisible (essaie un MP3/M4A/WAV)."); };
+    var p; try{ p=ctx.decodeAudioData(reader.result, onBuf, fail); }catch(err){ fail(); return; }
+    if(p&&p.then) p.then(onBuf,fail);
+  };
+  reader.readAsArrayBuffer(file);
+  e.target.value="";
 };
-document.getElementById("buf").onclick=function(){
-  var c=ensure(); if(!c) return;
-  say("état contexte : "+c.state);
-  var sr=c.sampleRate, len=Math.floor(sr*0.7);
-  var b=c.createBuffer(1,len,sr), d=b.getChannelData(0);
-  for(var i=0;i<len;i++){ d[i]=Math.sin(2*Math.PI*440*i/sr)*0.25*(1-i/len); }
-  var g=c.createGain(); g.gain.value=1; g.connect(c.destination);
-  var s=c.createBufferSource(); s.buffer=b; s.connect(g);
-  s.start(c.currentTime+0.02);
-  say("▶ bip buffer lancé (chemin exact du montage) — tu dois l'entendre.","ok");
+function finishAnalyze(){
+  if(!A){ setState("Analyse impossible."); return; }
+  var eng=A.engine==="essentia"?"Essentia":"moteur maison";
+  if(A.bpm) setState("Moteur : <b>"+eng+"</b> · "+A.bpm+" BPM · "+A.beats.length+" temps"+(A.engine==="essentia"&&A.conf?(" · confiance "+A.conf.toFixed(1)):"")+". Ajoute des photos puis « Lire ».");
+  else setState("Moteur : <b>"+eng+"</b> · pas de tempo net. Ajoute des photos puis « Lire ».");
+  if(PHOTOS.length) buildPartition(); updateBadge(); paintStrip(0);
+}
+
+document.getElementById("fPhotos").onchange=function(e){
+  var files=Array.prototype.slice.call(e.target.files||[]); if(!files.length) return;
+  var pending=files.length;
+  var after=function(){ if(A) buildPartition(); updateBadge(); setState(PHOTOS.length+" photos chargées."); if(A&&PHOTOS.length) paintStrip(playing?visualTime():0); };
+  files.forEach(function(file){ var url=URL.createObjectURL(file); var img=new Image();
+    img.onload=function(){ PHOTOS.push({img:img,url:url}); if(--pending===0) after(); };
+    img.onerror=function(){ if(--pending===0) after(); }; img.src=url; });
+  e.target.value="";
 };
+
+/* init */
+initGL(); paintStrip(0); updateBadge();
+essentiaReady.then(function(ok){ if(!ok && !A){ /* silencieux : le repli se fait à l'analyse */ } });
 </script>
 </body>
 </html>
