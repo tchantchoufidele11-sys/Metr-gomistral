@@ -242,7 +242,7 @@ function buildPartition(){
     var strong=(pts[c].s>=M.accent) || energyAt(start)>0.55;
     SEGS.push({start:start,end:end,strong:strong,e:energyAt(start)});
   }
-  var MOVES=["in","out","in","driftL","in","out","driftR","rot"];
+  var MOVES=["zoomIn","panLR","zoomOut","panRL","zoomIn","panRL","zoomOut","panLR"];
   SEGS.forEach(function(sg,idx){
     sg.img=PHOTOS.length?(idx%PHOTOS.length):-1;
     sg.kbDir=(idx%2===0)?1:-1; sg.slideDir=(idx%2===0)?1:-1;
@@ -291,17 +291,20 @@ function drawSegAt(sg,t,ox,smul){
   bctx.drawImage(img,(Wd-wc)/2,(Hd-hc)/2,wc,hc);
   bctx.fillStyle="rgba(0,0,0,0.5)"; bctx.fillRect(0,0,Wd,Hd);
   bctx.restore();
-  /* mouvement de camera par plan (reste centre) */
-  var mv=sg.move||"in", zoom=1.0+M.kb*p, dx=0, rot=0;
-  if(mv==="out") zoom=1.0+M.kb*(1-p);
-  else if(mv==="driftL"){ dx=-Wd*0.03*p; zoom=1.02+M.kb*p; }
-  else if(mv==="driftR"){ dx=Wd*0.03*p; zoom=1.02+M.kb*p; }
-  else if(mv==="rot"){ rot=(sg.kbDir||1)*0.018*p; zoom=1.02+M.kb*p; }
-  /* pulsation sur le temps fort */
-  zoom *= (1 + beatPulse(t)*(M.punch||0.03));
-  zoom *= smul;
+  /* mouvement camera PRO, lisse sur toute la duree du plan (Ken Burns), sans battement */
+  var ease=p*p*(3.0-2.0*p);                 /* accel/decel douce */
+  var mv=sg.move||"zoomIn";
+  var baseZ=1.06, amp=M.kb, panA=Wd*0.07;   /* leger surcadrage + amplitude de travelling */
+  var zoom, dx=0, dy=0;
+  if(mv==="zoomIn"){ zoom=baseZ+amp*ease; }
+  else if(mv==="zoomOut"){ zoom=baseZ+amp*(1.0-ease); }
+  else if(mv==="panLR"){ zoom=baseZ+amp*0.4; dx=(-panA + 2.0*panA*ease); }
+  else if(mv==="panRL"){ zoom=baseZ+amp*0.4; dx=( panA - 2.0*panA*ease); }
+  else if(mv==="panUD"){ zoom=baseZ+amp*0.4; dy=(-panA*0.6 + 1.2*panA*ease); }
+  else { zoom=baseZ+amp*ease; }
+  zoom*=smul;
   var rf=Math.min(Wd/img.width,Hd/img.height)*zoom, wf=img.width*rf, hf=img.height*rf;
-  bctx.save(); bctx.translate(cx+ox+dx, cy); if(rot) bctx.rotate(rot);
+  bctx.save(); bctx.translate(cx+ox+dx, cy+dy);
   bctx.drawImage(img,-wf/2,-hf/2,wf,hf);
   bctx.restore();
 }
@@ -6443,10 +6446,10 @@ function loop(){
     drawSegAt(prev,prev.end-0.001,0,1); trUpload(TR.texFrom);
     drawSegAt(sg,t,0,1); trUpload(TR.texTo);
     trMix(trName,into/TRd,sg);
-    drawGL(t,Math.max(strongPulse,beatPulse(t)*0.6),TR.fbo.tex);
+    drawGL(t,strongPulse,TR.fbo.tex);
   } else {
     var r=renderBaseFrame(t);
-    if(glReady) drawGL(t,Math.max(r.strongPulse,beatPulse(t)*0.6));
+    if(glReady) drawGL(t,r.strongPulse);
   }
   paintStrip(t);
   raf=requestAnimationFrame(loop);
