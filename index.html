@@ -106,10 +106,10 @@ var essentiaReady=new Promise(function(resolve){
 
 /* ================= Ambiances (hold = nombre entier de temps) ================= */
 var MOODS={
-  cinema:{minSec:2.0, tgtSec:2.8, maxSec:4.0, accent:0.50, grade:{expo:0.02,contrast:0.12,sat:-0.04,temp:0.16,vig:0.36,grain:0.05,leak:0.10}, kb:0.10, punch:0.030},
-  doux:{minSec:2.6, tgtSec:3.6, maxSec:5.0, accent:0.58, grade:{expo:0.05,contrast:0.02,sat:0.06,temp:0.22,vig:0.20,grain:0.02,leak:0.20}, kb:0.06, punch:0.018},
-  dynamique:{minSec:1.4, tgtSec:1.9, maxSec:2.8, accent:0.42, grade:{expo:0.03,contrast:0.18,sat:0.14,temp:-0.06,vig:0.26,grain:0.07,leak:0.05}, kb:0.16, punch:0.050},
-  voyage:{minSec:2.0, tgtSec:2.8, maxSec:4.0, accent:0.50, grade:{expo:0.04,contrast:0.08,sat:0.11,temp:0.10,vig:0.22,grain:0.03,leak:0.13}, kb:0.11, punch:0.032}
+  cinema:{minSec:2.0, tgtSec:2.8, maxSec:4.0, accent:0.50, grade:{expo:0.02,contrast:0.12,sat:-0.04,temp:0.16,vig:0.36,grain:0.05,leak:0.10}, kb:0.10, punch:0.030, fx:{chromatic:0.003,bloom:0.15,halation:0.20,anamorphic:0.10,dust:0.08,scanlines:0.0,shutter:0.02,lensFlare:0.0}},
+  doux:{minSec:2.6, tgtSec:3.6, maxSec:5.0, accent:0.58, grade:{expo:0.05,contrast:0.02,sat:0.06,temp:0.22,vig:0.20,grain:0.02,leak:0.20}, kb:0.06, punch:0.018, fx:{chromatic:0.001,bloom:0.35,halation:0.35,anamorphic:0.0,dust:0.02,scanlines:0.0,shutter:0.0,lensFlare:0.05}},
+  dynamique:{minSec:1.4, tgtSec:1.9, maxSec:2.8, accent:0.42, grade:{expo:0.03,contrast:0.18,sat:0.14,temp:-0.06,vig:0.26,grain:0.07,leak:0.05}, kb:0.16, punch:0.050, fx:{chromatic:0.008,bloom:0.10,halation:0.10,anamorphic:0.25,dust:0.04,scanlines:0.05,shutter:0.04,lensFlare:0.15}},
+  voyage:{minSec:2.0, tgtSec:2.8, maxSec:4.0, accent:0.50, grade:{expo:0.04,contrast:0.08,sat:0.11,temp:0.10,vig:0.22,grain:0.03,leak:0.13}, kb:0.11, punch:0.032, fx:{chromatic:0.005,bloom:0.20,halation:0.15,anamorphic:0.08,dust:0.06,scanlines:0.0,shutter:0.01,lensFlare:0.10}}
 };
 
 /* ================= Enveloppes (force des temps + énergie) ================= */
@@ -327,18 +327,152 @@ function renderBaseFrame(t){
 /* ================= Effets WebGL ================= */
 var gl=null, glProg=null, glTex=null, glU={}, glReady=false;
 var VS="attribute vec2 aPos;varying vec2 vUv;void main(){vUv=vec2((aPos.x+1.0)*0.5,1.0-(aPos.y+1.0)*0.5);gl_Position=vec4(aPos,0.0,1.0);}";
-var FS=["precision mediump float;varying vec2 vUv;uniform sampler2D tex;",
-"uniform float uTime,uGrain,uVig,uExpo,uContrast,uSat,uTemp,uLeak,uPulse;",
-"float rand(vec2 c){return fract(sin(dot(c,vec2(12.9898,78.233)))*43758.5453);}",
-"void main(){vec2 uv=vUv;vec3 c=texture2D(tex,uv).rgb;",
-" c*=(1.0+uExpo+uPulse*0.12);",
-" c.r+=uTemp*0.06; c.b-=uTemp*0.06;",
-" c=(c-0.5)*(1.0+uContrast)+0.5;",
-" float l=dot(c,vec3(0.299,0.587,0.114)); c=mix(vec3(l),c,1.0+uSat);",
-" float leak=smoothstep(0.85,0.15,distance(uv,vec2(0.82,0.16))); c+=vec3(1.0,0.62,0.32)*leak*uLeak;",
-" float d=distance(uv,vec2(0.5)); c*=1.0-uVig*smoothstep(0.32,0.92,d);",
-" float g=(rand(uv*vec2(uTime*7.0+1.0,uTime*5.0+3.0))-0.5)*uGrain; c+=g;",
-" gl_FragColor=vec4(clamp(c,0.0,1.0),1.0);}"].join("\n");
+var FS = `
+precision mediump float;
+varying vec2 vUv;
+uniform sampler2D uTex;
+uniform float uTime;
+uniform vec2 uResolution;
+
+// Grading existant
+uniform float uExpo, uContrast, uSat, uTemp, uVig, uGrain, uLeak, uPulse;
+
+// FX spéciaux
+uniform float uChromatic;   // aberration chromatique
+uniform float uBloom;       // bloom / glow
+uniform float uHalation;    // halation rouge
+uniform float uAnamorphic;  // streaks verticaux
+uniform float uDust;        // poussière de pellicule
+uniform float uScanlines;   // lignes de balayage
+uniform float uShutter;     // scintillement d'obturateur
+uniform float uLensFlare;   // flare d'objectif
+uniform float uFlareX, uFlareY; // position du flare
+
+float rand(vec2 c){ return fract(sin(dot(c,vec2(12.9898,78.233)))*43758.5453); }
+float rand3(vec3 c){ return fract(sin(dot(c,vec3(12.9898,78.233,45.164)))*43758.5453); }
+
+vec3 sampleBlur(sampler2D tex, vec2 uv, float spread){
+  vec3 s = vec3(0.0);
+  s += texture2D(tex, uv + vec2(spread,0.0)).rgb * 0.25;
+  s += texture2D(tex, uv - vec2(spread,0.0)).rgb * 0.25;
+  s += texture2D(tex, uv + vec2(0.0,spread)).rgb * 0.25;
+  s += texture2D(tex, uv - vec2(0.0,spread)).rgb * 0.25;
+  return s;
+}
+
+void main(){
+  vec2 uv = vUv;
+  vec2 px = uv * uResolution;
+
+  // --- 1. Chromatic aberration ---
+  float ca = uChromatic * (length(uv-0.5) * 0.5 + 0.5);
+  vec3 c;
+  c.r = texture2D(uTex, uv + vec2(ca, 0.0)).r;
+  c.g = texture2D(uTex, uv).g;
+  c.b = texture2D(uTex, uv - vec2(ca, 0.0)).b;
+
+  // --- 2. Bloom (blur + add) ---
+  if(uBloom > 0.0){
+    vec3 blur = sampleBlur(uTex, uv, 3.0/uResolution.x) * 0.5
+              + sampleBlur(uTex, uv, 8.0/uResolution.x) * 0.3
+              + sampleBlur(uTex, uv, 16.0/uResolution.x) * 0.2;
+    float luma = dot(blur, vec3(0.299,0.587,0.114));
+    c += blur * uBloom * smoothstep(0.3, 0.9, luma);
+  }
+
+  // --- 3. Grading existant ---
+  c *= (1.0 + uExpo + uPulse * 0.12);
+  c.r += uTemp * 0.06; c.b -= uTemp * 0.06;
+  c = (c - 0.5) * (1.0 + uContrast) + 0.5;
+  float l = dot(c, vec3(0.299,0.587,0.114));
+  c = mix(vec3(l), c, 1.0 + uSat);
+
+  // --- 4. Light leak existant ---
+  float leak = smoothstep(0.85, 0.15, distance(uv, vec2(0.82, 0.16)));
+  c += vec3(1.0, 0.62, 0.32) * leak * uLeak;
+
+  // --- 5. Halation (film red glow on highlights) ---
+  if(uHalation > 0.0){
+    float hi = smoothstep(0.6, 0.95, l);
+    c.r += hi * uHalation * 0.25;
+    c.g += hi * uHalation * 0.08;
+    // blur the halation a bit
+    vec3 hBlur = sampleBlur(uTex, uv, 6.0/uResolution.x);
+    float hLuma = dot(hBlur, vec3(0.299,0.587,0.114));
+    c.r += smoothstep(0.5, 0.9, hLuma) * uHalation * 0.15;
+  }
+
+  // --- 6. Anamorphic streaks ---
+  if(uAnamorphic > 0.0){
+    float streak = 0.0;
+    for(float i=1.0;i<=4.0;i++){
+      float w = i * 2.5 / uResolution.y;
+      streak += texture2D(uTex, uv + vec2(0.0, w)).r;
+      streak += texture2D(uTex, uv - vec2(0.0, w)).r;
+    }
+    streak /= 8.0;
+    float bright = smoothstep(0.5, 0.95, streak);
+    c += vec3(0.9, 0.95, 1.0) * bright * uAnamorphic * 0.4;
+  }
+
+  // --- 7. Vignette existant ---
+  float d = distance(uv, vec2(0.5));
+  c *= 1.0 - uVig * smoothstep(0.32, 0.92, d);
+
+  // --- 8. Film grain existant ---
+  float g = (rand(uv * vec2(uTime*7.0+1.0, uTime*5.0+3.0)) - 0.5) * uGrain;
+  c += g;
+
+  // --- 9. Scanlines ---
+  if(uScanlines > 0.0){
+    float sl = sin(uv.y * uResolution.y * 1.5) * 0.5 + 0.5;
+    sl = pow(sl, 1.5);
+    c *= 1.0 - (1.0 - sl) * uScanlines * 0.15;
+  }
+
+  // --- 10. Shutter flicker ---
+  if(uShutter > 0.0){
+    float flick = 1.0 + sin(uTime * 47.0) * 0.015 * uShutter
+                    + sin(uTime * 23.0) * 0.01 * uShutter;
+    c *= flick;
+  }
+
+  // --- 11. Dust & scratches ---
+  if(uDust > 0.0){
+    float d1 = rand3(vec3(floor(px/3.0), floor(uTime*12.0)));
+    float d2 = rand3(vec3(floor(px/2.0)+100.0, floor(uTime*7.0)+50.0));
+    float scratch = step(0.998 - uDust*0.003, d1) * smoothstep(0.3, 0.7, rand(vec2(floor(px.x/80.0), uTime)));
+    float dust = step(0.995 - uDust*0.004, d2) * 0.4;
+    c += vec3(1.0) * scratch * 0.35;
+    c -= vec3(1.0) * dust * 0.15;
+  }
+
+  // --- 12. Lens flare (simplifié mais réaliste) ---
+  if(uLensFlare > 0.0){
+    vec2 fl = vec2(uFlareX, uFlareY);
+    vec2 fd = uv - fl;
+    float fDist = length(fd);
+    // ghost 1
+    float g1 = 1.0 - smoothstep(0.0, 0.08, fDist);
+    // ghost 2 (opposite)
+    float g2 = 1.0 - smoothstep(0.0, 0.04, length(uv - (0.5 - fd*0.45)));
+    // ring
+    float ring = 1.0 - smoothstep(0.12, 0.18, fDist);
+    ring *= smoothstep(0.08, 0.12, fDist);
+    // star
+    float star = pow(max(0.0, 1.0 - fDist*6.0), 3.0);
+    float angle = atan(fd.y, fd.x);
+    star *= pow(abs(cos(angle*4.0)), 4.0) * 0.5 + 0.5;
+
+    vec3 flareCol = vec3(1.0, 0.92, 0.78) * g1 * 0.6
+                  + vec3(1.0, 0.7, 0.4) * g2 * 0.3
+                  + vec3(1.0, 0.85, 0.6) * ring * 0.25
+                  + vec3(1.0, 0.95, 0.9) * star * 0.8;
+    c += flareCol * uLensFlare;
+  }
+
+  gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+}`;
 function compile(g,type,src){ var s=g.createShader(type); g.shaderSource(s,src); g.compileShader(s); if(!g.getShaderParameter(s,g.COMPILE_STATUS)){ console.warn(g.getShaderInfoLog(s)); return null; } return s; }
 function initGL(){
   var cv=document.getElementById("gl");
@@ -357,16 +491,21 @@ function initGL(){
   glTex=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,glTex);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
-  ["uTime","uGrain","uVig","uExpo","uContrast","uSat","uTemp","uLeak","uPulse"].forEach(function(n){ glU[n]=gl.getUniformLocation(glProg,n); });
+  ["uTime","uResolution","uGrain","uVig","uExpo","uContrast","uSat","uTemp","uLeak","uPulse","uChromatic","uBloom","uHalation","uAnamorphic","uDust","uScanlines","uShutter","uLensFlare","uFlareX","uFlareY"].forEach(function(n){ glU[n]=gl.getUniformLocation(glProg,n); });
   glReady=true; return true;
 }
 function drawGL(time,pulse){
-  if(!glReady) return; var G=MOODS[MOOD].grade;
+  if(!glReady) return; var G=MOODS[MOOD].grade, F=MOODS[MOOD].fx||{};
   gl.bindTexture(gl.TEXTURE_2D,glTex);
   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,base);
-  gl.uniform1f(glU.uTime,time); gl.uniform1f(glU.uGrain,G.grain); gl.uniform1f(glU.uVig,G.vig);
+  gl.uniform1f(glU.uTime,time); if(glU.uResolution) gl.uniform2f(glU.uResolution,base.width,base.height);
+  gl.uniform1f(glU.uGrain,G.grain); gl.uniform1f(glU.uVig,G.vig);
   gl.uniform1f(glU.uExpo,G.expo); gl.uniform1f(glU.uContrast,G.contrast); gl.uniform1f(glU.uSat,G.sat);
   gl.uniform1f(glU.uTemp,G.temp); gl.uniform1f(glU.uLeak,G.leak); gl.uniform1f(glU.uPulse,pulse||0);
+  gl.uniform1f(glU.uChromatic,F.chromatic||0); gl.uniform1f(glU.uBloom,F.bloom||0); gl.uniform1f(glU.uHalation,F.halation||0);
+  gl.uniform1f(glU.uAnamorphic,F.anamorphic||0); gl.uniform1f(glU.uDust,F.dust||0); gl.uniform1f(glU.uScanlines,F.scanlines||0);
+  gl.uniform1f(glU.uShutter,F.shutter||0); gl.uniform1f(glU.uLensFlare,F.lensFlare||0);
+  gl.uniform1f(glU.uFlareX,0.5); gl.uniform1f(glU.uFlareY,0.28);
   gl.drawArrays(gl.TRIANGLES,0,6);
 }
 
