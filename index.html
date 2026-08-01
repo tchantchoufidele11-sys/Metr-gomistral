@@ -15,9 +15,8 @@
     background:linear-gradient(160deg,#1b3a63 0%,#2f5f86 40%,#c9a06a 75%,#e8c98a 100%);box-shadow:0 10px 30px rgba(0,0,0,.5)}
   .stage .scene{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;padding-bottom:12%}
   .stage .scene b{font:700 22px Georgia,serif;color:rgba(255,255,255,.85);text-shadow:0 2px 8px rgba(0,0,0,.4)}
-  /* (1) conteneur DIV : tsParticles cree son propre canvas dedans */
-  #tsp{position:absolute;inset:0;pointer-events:none;z-index:2}
-  #tsp canvas{position:absolute!important;inset:0!important;width:100%!important;height:100%!important}
+  /* canvas direct : c'est ce qui affiche reellement (tsParticles v3 l'accepte) */
+  #tsp{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
   #fps{position:absolute;top:8px;right:10px;z-index:3;background:rgba(6,12,26,.6);border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:3px 9px;font:600 11px ui-monospace,monospace;color:#dfe7f6}
   .row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
   .btn{flex:1;min-width:46%;border:1px solid #26345c;background:#141d3a;color:#eaf0fb;border-radius:11px;padding:13px;font:600 14px system-ui;cursor:pointer}
@@ -30,10 +29,10 @@
 <body>
 <div class="wrap">
   <h1>Test particules — tsParticles</h1>
-  <p class="sub">Lot critique appliqué : conteneur div (tsParticles crée son canvas), verrou anti-course, destruction propre. + FPS visible.</p>
+  <p class="sub">Lot critique appliqué : canvas direct qui affiche, verrou anti-course, destruction propre. + FPS visible.</p>
   <div class="stage">
     <div class="scene"><b>scène test</b></div>
-    <div id="tsp"></div>
+    <canvas id="tsp"></canvas>
     <div id="fps">— fps</div>
   </div>
   <div class="row">
