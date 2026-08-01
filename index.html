@@ -15,8 +15,8 @@
     background:linear-gradient(160deg,#1b3a63 0%,#2f5f86 40%,#c9a06a 75%,#e8c98a 100%);box-shadow:0 10px 30px rgba(0,0,0,.5)}
   .stage .scene{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;padding-bottom:12%}
   .stage .scene b{font:700 22px Georgia,serif;color:rgba(255,255,255,.85);text-shadow:0 2px 8px rgba(0,0,0,.4)}
-  #tsp{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-  #tsp canvas{position:absolute!important;inset:0;width:100%!important;height:100%!important;display:block!important}
+  #tsp{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
+  #fps{position:absolute;top:8px;right:10px;z-index:3;background:rgba(6,12,26,.6);border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:3px 9px;font:600 11px ui-monospace,monospace;color:#dfe7f6}
   .row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
   .btn{flex:1;min-width:46%;border:1px solid #26345c;background:#141d3a;color:#eaf0fb;border-radius:11px;padding:13px;font:600 14px system-ui;cursor:pointer}
   .btn:active{transform:translateY(1px)}
@@ -28,10 +28,11 @@
 <body>
 <div class="wrap">
   <h1>Test particules — tsParticles</h1>
-  <p class="sub">Bundle complet (tous les effets). Un seul moteur, un seul conteneur détruit proprement à chaque changement.</p>
+  <p class="sub">Correction du vrai bug : loadFull() appelé avant tout (sinon le moteur n'a aucun plugin → écran vide).</p>
   <div class="stage">
     <div class="scene"><b>scène test</b></div>
-    <div id="tsp"></div>
+    <canvas id="tsp"></canvas>
+    <div id="fps">— fps</div>
   </div>
   <div class="row">
     <button class="btn" id="snow">❄️ Neige</button>
@@ -45,106 +46,92 @@
     <button class="btn stop" id="stop">■ Tout arrêter</button>
   </div>
   <div id="log">Chargement du moteur…</div>
-  <p class="hint">Enchaîne les 4 effets dans tous les sens : ça ne doit plus jamais planter. Dis-moi effet par effet : réaliste et fluide, oui ou non.</p>
+  <p class="hint">Les 4 effets doivent enfin s'afficher. Enchaîne-les vite : pas de plantage (verrou). Regarde le FPS.</p>
 </div>
 <script>
 "use strict";
-var log=document.getElementById("log");
+var log=document.getElementById("log"), fpsEl=document.getElementById("fps");
 function say(s){ log.textContent=s; }
-function ready(){ return (typeof tsParticles!=="undefined" && typeof tsParticles.load==="function"); }
-var cur=null;
-var playVersion=0;
+var engineReady=false, cur=null, seq=0;
+function ready(){ return engineReady && typeof tsParticles!=="undefined"; }
 
 var CFG_SNOW={
   fullScreen:{enable:false}, background:{color:"transparent"}, detectRetina:true, fpsLimit:60,
-  particles:{
-    number:{value:220,density:{enable:true,area:800}},
-    color:{value:"#ffffff"}, shape:{type:"circle"},
-    opacity:{value:{min:0.25,max:0.9}},
-    size:{value:{min:1,max:4}},
+  particles:{ number:{value:220,density:{enable:true,area:800}}, color:{value:"#ffffff"}, shape:{type:"circle"},
+    opacity:{value:{min:0.25,max:0.9}}, size:{value:{min:1,max:4}},
     move:{enable:true,direction:"bottom",speed:{min:1,max:3.5},straight:false,drift:{min:-0.6,max:0.6}},
-    wobble:{enable:true,distance:12,speed:{min:-4,max:4}},
-    zIndex:{value:{min:0,max:100}}
-  }
+    wobble:{enable:true,distance:12,speed:{min:-4,max:4}}, zIndex:{value:{min:0,max:100}} }
 };
 var CFG_RAIN={
   fullScreen:{enable:false}, background:{color:"transparent"}, detectRetina:true, fpsLimit:60,
-  particles:{
-    number:{value:200,density:{enable:true,area:800}},
-    color:{value:"#dceaff"}, shape:{type:"square"},
-    opacity:{value:{min:0.45,max:0.9}},
-    size:{value:{min:1,max:2.2}},
-    move:{enable:true,direction:"bottom",speed:{min:18,max:28},straight:true}
-  }
+  particles:{ number:{value:280,density:{enable:true,area:800}}, color:{value:"#dcebff"}, shape:{type:"circle"},
+    opacity:{value:{min:0.35,max:0.7}}, size:{value:{min:1,max:2.4}},
+    move:{enable:true,direction:"bottom",speed:{min:24,max:34},straight:true,
+      trail:{enable:true,length:9,fill:{color:"transparent"}}} }
 };
 var CFG_CONF={
   fullScreen:{enable:false}, background:{color:"transparent"}, detectRetina:true, fpsLimit:60,
-  emitters:{
-    life:{count:1,duration:0.12,delay:0},
-    rate:{delay:0,quantity:160},
-    position:{x:50,y:50},
-    size:{width:0,height:0}
-  },
-  particles:{
-    number:{value:0},
-    color:{value:["#E0A33E","#ffffff","#5c9ce0","#ff6b6b","#7bd88f","#bf5af2"]},
-    shape:{type:["circle","square"]},
-    opacity:{value:1,animation:{enable:true,startValue:"max",speed:0.5,destroy:"min"}},
-    size:{value:{min:3,max:6}},
-    life:{duration:{sync:false,value:4},count:1},
+  emitters:{ life:{count:1,duration:0.12,delay:0}, rate:{delay:0,quantity:160}, position:{x:50,y:50}, size:{width:0,height:0} },
+  particles:{ number:{value:0}, color:{value:["#E0A33E","#ffffff","#5c9ce0","#ff6b6b","#7bd88f","#bf5af2"]},
+    shape:{type:["circle","square"]}, opacity:{value:1,animation:{enable:true,startValue:"max",speed:0.5,destroy:"min"}},
+    size:{value:{min:3,max:6}}, life:{duration:{sync:false,value:4},count:1},
     move:{enable:true,gravity:{enable:true,acceleration:14},speed:{min:25,max:50},decay:0.06,direction:"none",outModes:{default:"destroy",top:"none"}},
     rotate:{value:{min:0,max:360},direction:"random",animation:{enable:true,speed:30}},
     tilt:{enable:true,value:{min:0,max:360},animation:{enable:true,speed:30}},
-    roll:{enable:true,speed:{min:5,max:15}},
-    wobble:{enable:true,distance:20,speed:{min:-10,max:10}}
-  }
+    roll:{enable:true,speed:{min:5,max:15}}, wobble:{enable:true,distance:20,speed:{min:-10,max:10}} }
 };
 var CFG_FW={
   fullScreen:{enable:false}, background:{color:"transparent"}, detectRetina:true, fpsLimit:60,
   emitters:[
-    {life:{count:0,duration:0.1,delay:0.7}, rate:{delay:0,quantity:70}, position:{x:30,y:30}, size:{width:0,height:0}},
-    {life:{count:0,duration:0.1,delay:1.1}, rate:{delay:0,quantity:70}, position:{x:70,y:22}, size:{width:0,height:0}},
-    {life:{count:0,duration:0.1,delay:1.5}, rate:{delay:0,quantity:70}, position:{x:50,y:38}, size:{width:0,height:0}}
+    {life:{count:0,duration:0.1,delay:0.7}, rate:{delay:0,quantity:80}, position:{x:30,y:28}, size:{width:0,height:0}},
+    {life:{count:0,duration:0.1,delay:1.2}, rate:{delay:0,quantity:80}, position:{x:70,y:20}, size:{width:0,height:0}},
+    {life:{count:0,duration:0.1,delay:1.6}, rate:{delay:0,quantity:80}, position:{x:50,y:36}, size:{width:0,height:0}}
   ],
-  particles:{
-    number:{value:0},
-    color:{value:["#ff2d55","#ffd60a","#30d158","#0a84ff","#bf5af2","#ffffff"]},
-    shape:{type:"circle"},
-    opacity:{value:1,animation:{enable:true,startValue:"max",speed:0.8,destroy:"min"}},
-    size:{value:{min:1.5,max:3.5}},
+  particles:{ number:{value:0}, color:{value:["#ff2d55","#ffd60a","#30d158","#0a84ff","#bf5af2","#ffffff"]}, shape:{type:"circle"},
+    opacity:{value:1,animation:{enable:true,startValue:"max",speed:0.8,destroy:"min"}}, size:{value:{min:1.5,max:3.5}},
     life:{duration:{sync:false,value:1.8},count:1},
-    move:{enable:true,gravity:{enable:true,acceleration:9},speed:{min:12,max:34},decay:0.04,direction:"none",outModes:{default:"destroy"}},
-    trail:{enable:true,length:6,fill:{color:"transparent"}}
-  }
+    move:{enable:true,gravity:{enable:true,acceleration:9},speed:{min:12,max:34},decay:0.04,direction:"none",outModes:{default:"destroy"},
+      trail:{enable:true,length:6,fill:{color:"transparent"}}} }
 };
 
-async function play(cfg,name){
+function play(cfg,name){
   if(!ready()){ say("moteur pas prêt…"); return; }
-  var version=++playVersion;
-  if(cur){ try{ cur.destroy(); }catch(e){ console.warn(e); } cur=null; }
-  var host=document.getElementById("tsp");
-  if(host) host.innerHTML="";
-  try{
-    var c=await tsParticles.load({ id:"tsp", options:cfg });
-    if(version!==playVersion){ try{ c&&c.destroy&&c.destroy(); }catch(e){} return; }
-    cur=c;
-    say(name+" ✔");
-  }catch(e){
-    console.error(e);
-    say("échec "+name+" : "+(e&&e.message?e.message:e));
-  }
+  var my=++seq;
+  var prev=cur; cur=null;
+  if(prev){ try{ prev.destroy(); }catch(e){} }
+  tsParticles.load({ id:"tsp", options:cfg }).then(function(c){
+    if(my!==seq){ try{ c&&c.destroy(); }catch(e){} return; }   /* verrou : un appui plus recent gagne */
+    cur=c; say(name+" ✔");
+  }).catch(function(e){ say("échec "+name+" : "+e); });
 }
 document.getElementById("snow").onclick=function(){ play(CFG_SNOW,"neige"); };
 document.getElementById("rain").onclick=function(){ play(CFG_RAIN,"pluie"); };
 document.getElementById("confetti").onclick=function(){ play(CFG_CONF,"confettis"); };
 document.getElementById("fw").onclick=function(){ play(CFG_FW,"feux d'artifice"); };
-document.getElementById("stop").onclick=function(){ playVersion++; if(cur){ try{ cur.destroy(); }catch(e){ console.warn(e); } cur=null; } var host=document.getElementById("tsp"); if(host) host.innerHTML=""; say("arrêté."); };
+document.getElementById("stop").onclick=function(){ seq++; var p=cur; cur=null; if(p){ try{ p.destroy(); }catch(e){} } say("arrêté."); };
 
-(function wait(n){
-  if(ready()){ say("moteur prêt. Appuie sur un effet."); return; }
-  if(n<=0){ say("❌ le moteur n'a pas chargé (réseau/CDN ?)."); return; }
-  setTimeout(function(){ wait(n-1); }, 300);
-})(20);
+/* FPS */
+var frames=0, lastT=performance.now();
+function fpsLoop(t){ frames++; if(t-lastT>=1000){ fpsEl.textContent=frames+" fps"; frames=0; lastT=t; } requestAnimationFrame(fpsLoop); }
+requestAnimationFrame(fpsLoop);
+
+/* Init : attendre le script CDN, PUIS loadFull (indispensable) */
+(function initEngine(){
+  var tries=0;
+  function step(){
+    if(typeof tsParticles==="undefined"){ if(tries++>=25){ say("❌ moteur non chargé (réseau/CDN ?)."); return; } setTimeout(step,300); return; }
+    try{
+      if(typeof loadFull==="function"){
+        var r=loadFull(tsParticles);
+        if(r&&r.then){ r.then(function(){ engineReady=true; say("moteur prêt ✔ — appuie sur un effet."); }).catch(function(e){ say("init échouée : "+e); }); }
+        else { engineReady=true; say("moteur prêt ✔ — appuie sur un effet."); }
+      } else {
+        engineReady=true; say("moteur prêt (loadFull absent) — appuie.");
+      }
+    }catch(e){ say("init échouée : "+e); }
+  }
+  step();
+})();
 </script>
 </body>
 </html>
