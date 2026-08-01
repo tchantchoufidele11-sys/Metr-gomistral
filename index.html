@@ -3,119 +3,85 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
-<title>Test effets — PixiJS</title>
-<script src="https://cdn.jsdelivr.net/npm/pixi.js@7/dist/pixi.min.js"></script>
+<title>Test overlay vidéo — réaliste</title>
 <style>
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;background:#0a1024;color:#eef2f9;font:15px/1.4 -apple-system,system-ui,sans-serif}
   .wrap{max-width:430px;margin:0 auto;padding:14px 14px 46px}
   h1{font:700 18px Georgia,serif;color:#fff;margin:6px 0 2px}
   .sub{color:#9fb0d0;font-size:12.5px;margin:0 0 12px}
-  .stage{position:relative;width:100%;aspect-ratio:9/16;border-radius:14px;overflow:hidden;
-    background:linear-gradient(160deg,#12233f 0%,#274a6b 45%,#7c6a52 80%,#c9a06a 100%);box-shadow:0 10px 30px rgba(0,0,0,.5)}
-  .stage .scene{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;padding-bottom:12%}
-  .stage .scene b{font:700 22px Georgia,serif;color:rgba(255,255,255,.85);text-shadow:0 2px 8px rgba(0,0,0,.4)}
-  #pixi{position:absolute;inset:0;z-index:2;pointer-events:none}
-  #pixi canvas{width:100%!important;height:100%!important;display:block}
-  #fps{position:absolute;top:8px;right:10px;z-index:3;background:rgba(6,12,26,.6);border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:3px 9px;font:600 11px ui-monospace,monospace;color:#dfe7f6}
-  .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px}
-  .btn{border:1px solid #26345c;background:#141d3a;color:#eaf0fb;border-radius:11px;padding:12px 6px;font:600 13px system-ui;cursor:pointer;text-align:center}
+  .stage{position:relative;width:100%;aspect-ratio:9/16;border-radius:14px;overflow:hidden;background:#000;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+  #bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:linear-gradient(160deg,#12233f,#274a6b 45%,#7c6a52 80%,#c9a06a)}
+  #ov{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;mix-blend-mode:screen;opacity:0;transition:opacity .3s}
+  .cap{position:absolute;left:10px;bottom:10px;z-index:3;background:rgba(6,12,26,.55);border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:4px 9px;font:600 11px system-ui;color:#dfe7f6}
+  .row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .btn{flex:1;min-width:46%;border:1px solid #26345c;background:#141d3a;color:#eaf0fb;border-radius:11px;padding:13px;font:600 13.5px system-ui;cursor:pointer;text-align:center}
   .btn:active{transform:translateY(1px)}
-  .btn.stop{grid-column:1 / -1;background:#3a1420;border-color:#5c2130}
-  .hint{color:#7d8cae;font-size:12px;margin-top:12px;line-height:1.5}
-  #log{margin-top:10px;font:12px ui-monospace,monospace;color:#9fb0d0}
+  .seg{display:flex;gap:6px;margin-top:10px}
+  .seg button{flex:1;border:1px solid #26345c;background:#111a34;color:#c7d3ee;border-radius:9px;padding:9px 4px;font:600 12px system-ui}
+  .seg button.on{background:#E0A33E;color:#241603;border-color:#E0A33E}
+  .hint{color:#7d8cae;font-size:12px;margin-top:12px;line-height:1.55}
+  input[type=file]{display:none}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Test effets — PixiJS</h1>
-  <p class="sub">Tous les effets, vrai moteur WebGL, textures douces. Juge le réalisme et le FPS.</p>
+  <h1>Test overlay vidéo — la vraie méthode réaliste</h1>
+  <p class="sub">Charge une image, puis un vrai plan d'overlay (neige/pluie/feu sur fond noir). Fusion « écran » : le noir disparaît, il ne reste que l'effet.</p>
   <div class="stage">
-    <div class="scene"><b>scène test</b></div>
-    <div id="pixi"></div>
-    <div id="fps">— fps</div>
+    <img id="bg" alt="">
+    <video id="ov" playsinline loop muted webkit-playsinline></video>
+    <div class="cap" id="cap">Mode : écran</div>
   </div>
-  <div class="grid">
-    <button class="btn" data-m="snow">❄️ Neige</button>
-    <button class="btn" data-m="rain">🌧️ Pluie</button>
-    <button class="btn" data-m="confetti">🎉 Confettis</button>
-    <button class="btn" data-m="fireworks">🎆 Feux</button>
-    <button class="btn" data-m="embers">🔥 Braises</button>
-    <button class="btn" data-m="fireflies">✨ Lucioles</button>
-    <button class="btn" data-m="gold">🌟 Poussière</button>
-    <button class="btn" data-m="petals">🌸 Pétales</button>
-    <button class="btn" data-m="fire">🔥 Feu</button>
-    <button class="btn stop" data-m="stop">■ Tout arrêter</button>
+  <div class="seg" id="blend">
+    <button data-b="screen" class="on">Écran</button>
+    <button data-b="lighten">Éclaircir</button>
+    <button data-b="plus-lighter">Additif</button>
+    <button data-b="normal">Normal</button>
   </div>
-  <div id="log">Chargement du moteur…</div>
-  <p class="hint">Dis-moi effet par effet : réaliste ou pas, et le FPS. Ceux qui te plaisent, on garde ; les ratés, je refais.</p>
+  <div class="row">
+    <button class="btn" id="pickPhoto">🖼️ Charger une photo</button>
+    <button class="btn" id="pickVid">🎞️ Charger l'overlay</button>
+  </div>
+  <div class="row">
+    <button class="btn" id="clearOv">✕ Retirer l'overlay</button>
+  </div>
+  <p class="hint" id="log">Astuce : télécharge un overlay gratuit. Cherche sur <b>Pexels</b>, <b>Mixkit</b> ou <b>Videezy</b> : « snow overlay black background », « rain overlay black », « fire overlay black », « bokeh overlay », « light leak ». Enregistre le .mp4 dans Fichiers, puis charge-le ici.</p>
+  <p class="hint">Si l'effet est réaliste ici, c'est la voie : j'intègre ce compositing dans le studio (overlay choisi par la scène, calé sur la musique), et je garde PixiJS seulement pour confettis/feux/étincelles.</p>
+  <input type="file" id="fPhoto" accept="image/*">
+  <input type="file" id="fVid" accept="video/*">
 </div>
 <script>
 "use strict";
-var log=document.getElementById("log"), fpsEl=document.getElementById("fps"), host=document.getElementById("pixi");
-function say(s){ log.textContent=s; }
+var bg=document.getElementById("bg"), ov=document.getElementById("ov"), cap=document.getElementById("cap"), log=document.getElementById("log");
+var photoURL="", vidURL="";
+function say(s){ log.innerHTML=s; }
 
-function boot(){
-  if(typeof PIXI==="undefined"){ say("❌ PixiJS non chargé (réseau/CDN ?)."); return; }
-  var app;
-  try{ app=new PIXI.Application({ backgroundAlpha:0, antialias:true, autoDensity:true, resolution:Math.min(2,window.devicePixelRatio||1) }); }
-  catch(e){ say("init PixiJS échouée : "+e); return; }
-  host.appendChild(app.view);
-  app.view.style.width="100%"; app.view.style.height="100%"; app.view.style.display="block";
-  function fit(){ var r=host.getBoundingClientRect(); if(r.width>0) app.renderer.resize(r.width,r.height); }
-  fit(); window.addEventListener("resize",fit); setTimeout(fit,300);
+document.getElementById("pickPhoto").onclick=function(){ document.getElementById("fPhoto").click(); };
+document.getElementById("pickVid").onclick=function(){ document.getElementById("fVid").click(); };
 
-  var ADD=PIXI.BLEND_MODES.ADD;
-  function softTex(){ var s=64,c=document.createElement("canvas");c.width=c.height=s;var x=c.getContext("2d");
-    var g=x.createRadialGradient(s/2,s/2,0,s/2,s/2,s/2); g.addColorStop(0,"rgba(255,255,255,1)"); g.addColorStop(0.35,"rgba(255,255,255,0.7)"); g.addColorStop(1,"rgba(255,255,255,0)");
-    x.fillStyle=g; x.fillRect(0,0,s,s); return PIXI.Texture.from(c); }
-  function petalTex(){ var w=48,h=64,c=document.createElement("canvas");c.width=w;c.height=h;var x=c.getContext("2d");
-    x.fillStyle="#fff"; x.beginPath(); x.moveTo(w/2,2); x.bezierCurveTo(w,h*0.3,w*0.8,h,w/2,h-2); x.bezierCurveTo(w*0.2,h,0,h*0.3,w/2,2); x.fill(); return PIXI.Texture.from(c); }
-  var TEX=softTex(), PETAL=petalTex();
-  var container=new PIXI.Container(); app.stage.addChild(container);
-  var P=[], updateFn=null;
+document.getElementById("fPhoto").onchange=function(e){
+  var f=e.target.files&&e.target.files[0]; if(!f) return;
+  try{ if(photoURL) URL.revokeObjectURL(photoURL); }catch(x){}
+  photoURL=URL.createObjectURL(f); bg.src=photoURL; e.target.value="";
+};
+document.getElementById("fVid").onchange=function(e){
+  var f=e.target.files&&e.target.files[0]; if(!f) return;
+  try{ if(vidURL) URL.revokeObjectURL(vidURL); }catch(x){}
+  vidURL=URL.createObjectURL(f); ov.src=vidURL;
+  ov.play().then(function(){ ov.style.opacity="1"; say("overlay chargé ✔ — mode « écran » : le fond noir disparaît. Réaliste ?"); })
+           .catch(function(err){ say("lecture overlay bloquée : "+err+" — retape le bouton."); });
+  e.target.value="";
+};
+document.getElementById("clearOv").onclick=function(){ ov.pause(); ov.removeAttribute("src"); ov.load(); ov.style.opacity="0"; say("overlay retiré."); };
 
-  function clearAll(){ container.removeChildren(); P.length=0; updateFn=null; }
-  function mk(tex){ var s=new PIXI.Sprite(tex||TEX); s.anchor.set(0.5); container.addChild(s); P.push(s); return s; }
-  function W(){ return app.screen.width; } function H(){ return app.screen.height; }
-
-  /* physique commune pour les rafales (particules qui meurent) */
-  function stepBurst(dt){ for(var i=P.length-1;i>=0;i--){ var s=P[i];
-      if(s.g) s.vy+=s.g*dt; s.x+=(s.vx||0)*dt; s.y+=(s.vy||0)*dt; if(s.spin) s.rotation+=s.spin*dt;
-      if(s.maxLife){ s.life-=dt; var k=s.life/s.maxLife; if(k<0)k=0; s.alpha=(s.a0||1)*k; if(s.shrink) s.scale.set(s.sc0*(0.35+0.65*k));
-        if(s.life<=0){ container.removeChild(s); P.splice(i,1); } } } }
-
-  var MODES={};
-  MODES.snow=function(){ for(var i=0;i<650;i++){ var s=mk(); var d=Math.random(); s.scale.set(0.05+d*0.4); s.alpha=0.25+d*0.75; s.x=Math.random()*W(); s.y=Math.random()*H(); s.vy=18+d*120; s.ph=Math.random()*6.28; s.amp=6+d*26; }
-    updateFn=function(dt){ var w=W(),h=H(); for(var i=0;i<P.length;i++){ var s=P[i]; s.y+=s.vy*dt; s.ph+=dt*1.6; s.x+=Math.sin(s.ph)*s.amp*dt; if(s.y>h+24){s.y=-24;s.x=Math.random()*w;} } }; };
-  MODES.rain=function(){ for(var i=0;i<430;i++){ var s=mk(); s.tint=0xbcd6f5; var d=Math.random(); s.scale.set(0.03+d*0.05,0.35+d*0.8); s.alpha=0.2+d*0.45; s.x=Math.random()*W(); s.y=Math.random()*H(); s.vy=360+d*520; }
-    updateFn=function(dt){ var w=W(),h=H(); for(var i=0;i<P.length;i++){ var s=P[i]; s.y+=s.vy*dt; if(s.y>h+30){s.y=-30;s.x=Math.random()*w;} } }; };
-  MODES.gold=function(){ for(var i=0;i<300;i++){ var s=mk(); s.tint=0xffcf6b; s.blendMode=ADD; var d=Math.random(); s.scale.set(0.04+d*0.16); s.alpha=0.15+d*0.5; s.x=Math.random()*W(); s.y=Math.random()*H(); s.vy=-(4+d*22); s.ph=Math.random()*6.28; s.amp=6+d*18; s.tw=Math.random()*6.28; }
-    updateFn=function(dt){ var w=W(),h=H(); for(var i=0;i<P.length;i++){ var s=P[i]; s.y+=s.vy*dt; s.ph+=dt*1.2; s.x+=Math.sin(s.ph)*s.amp*dt; s.tw+=dt*2.5; s.alpha=(0.2+0.5*Math.random()*0.0)+ (0.3+0.4*(0.5+0.5*Math.sin(s.tw))); if(s.y<-24){s.y=h+24;s.x=Math.random()*w;} } }; };
-  MODES.embers=function(){ for(var i=0;i<260;i++){ var s=mk(); s.tint=0xff7a2a; s.blendMode=ADD; var d=Math.random(); s.scale.set(0.03+d*0.09); s.x=Math.random()*W(); s.y=Math.random()*H(); s.vy=-(30+d*110); s.ph=Math.random()*6.28; s.amp=6+d*16; s.tw=Math.random()*6.28; s.a0=0.4+d*0.5; }
-    updateFn=function(dt){ var w=W(),h=H(); for(var i=0;i<P.length;i++){ var s=P[i]; s.y+=s.vy*dt; s.ph+=dt*2.0; s.x+=Math.sin(s.ph)*s.amp*dt; s.tw+=dt*9; s.alpha=s.a0*(0.5+0.5*Math.sin(s.tw)); if(s.y<-20){s.y=h+20;s.x=Math.random()*w;} } }; };
-  MODES.fireflies=function(){ for(var i=0;i<90;i++){ var s=mk(); s.tint=0x9dff6b; s.blendMode=ADD; s.scale.set(0.06+Math.random()*0.08); s.x=Math.random()*W(); s.y=Math.random()*H(); s.dx=Math.random()*6.28; s.dy=Math.random()*6.28; s.tw=Math.random()*6.28; s.a0=0.5+Math.random()*0.5; }
-    updateFn=function(dt){ var w=W(),h=H(); for(var i=0;i<P.length;i++){ var s=P[i]; s.dx+=dt*0.8; s.dy+=dt*0.7; s.x+=Math.cos(s.dx)*22*dt; s.y+=Math.sin(s.dy)*18*dt; s.tw+=dt*3; s.alpha=s.a0*(0.3+0.7*(0.5+0.5*Math.sin(s.tw))); if(s.x<0)s.x=w; if(s.x>w)s.x=0; if(s.y<0)s.y=h; if(s.y>h)s.y=0; } }; };
-  MODES.petals=function(){ var cols=[0xffd1e8,0xffffff,0xffb3d1,0xf7c1a8]; for(var i=0;i<160;i++){ var s=mk(PETAL); s.tint=cols[i%cols.length]; var d=Math.random(); s.scale.set(0.12+d*0.22); s.alpha=0.7+d*0.3; s.x=Math.random()*W(); s.y=Math.random()*H(); s.vy=20+d*60; s.spin=(Math.random()-0.5)*3; s.ph=Math.random()*6.28; s.amp=14+d*30; }
-    updateFn=function(dt){ var w=W(),h=H(); for(var i=0;i<P.length;i++){ var s=P[i]; s.y+=s.vy*dt; s.ph+=dt*1.3; s.x+=Math.sin(s.ph)*s.amp*dt; s.rotation+=s.spin*dt; if(s.y>h+30){s.y=-30;s.x=Math.random()*w;} } }; };
-  MODES.fire=function(){ for(var i=0;i<320;i++){ var s=mk(); s.blendMode=ADD; var d=Math.random(); s.scale.set(0.08+d*0.16); s.x=Math.random()*W(); s.y=H()*(0.7+Math.random()*0.35); s.vy=-(60+d*140); s.ph=Math.random()*6.28; s.amp=8+d*18; s.y0=s.y; s.a0=0.35+d*0.4; }
-    updateFn=function(dt){ var w=W(),h=H(); for(var i=0;i<P.length;i++){ var s=P[i]; s.y+=s.vy*dt; s.ph+=dt*3; s.x+=Math.sin(s.ph)*s.amp*dt; var up=(h-s.y)/h; s.alpha=s.a0*Math.max(0,1-up*1.3); s.tint=up<0.5?0xffe08a:(up<0.8?0xff7a2a:0xd42a1a); if(s.alpha<=0.02 || s.y<h*0.25){ s.y=h*(0.85+Math.random()*0.2); s.x=w*(0.2+0.6*Math.random()); } } }; };
-  MODES.confetti=function(){ var cols=[0xE0A33E,0xffffff,0x5c9ce0,0xff6b6b,0x7bd88f,0xbf5af2]; var timer=0;
-    updateFn=function(dt){ timer-=dt; if(timer<=0){ timer=0.45; for(var i=0;i<46;i++){ var s=mk(PIXI.Texture.WHITE); s.tint=cols[i%cols.length]; s.width=6+Math.random()*7; s.height=3+Math.random()*4; s.x=W()*(0.15+0.7*Math.random()); s.y=-12; s.vx=(Math.random()-0.5)*140; s.vy=50+Math.random()*130; s.g=150; s.spin=(Math.random()-0.5)*12; s.maxLife=s.life=3.2+Math.random()*1.8; s.a0=1; } } stepBurst(dt);
-      for(var j=P.length-1;j>=0;j--){ if(P[j].y>H()+40){ container.removeChild(P[j]); P.splice(j,1); } } }; };
-  MODES.fireworks=function(){ var cols=[0xff2d55,0xffd60a,0x30d158,0x0a84ff,0xbf5af2,0xffffff]; var timer=0.2;
-    updateFn=function(dt){ timer-=dt; if(timer<=0){ timer=0.7+Math.random()*0.4; var cx=W()*(0.2+0.6*Math.random()), cy=H()*(0.15+0.28*Math.random()), col=cols[Math.floor(Math.random()*cols.length)];
-        for(var i=0;i<85;i++){ var a=Math.random()*6.28, sp=40+Math.random()*170; var s=mk(); s.blendMode=ADD; s.tint=col; s.sc0=0.05+Math.random()*0.06; s.scale.set(s.sc0); s.x=cx; s.y=cy; s.vx=Math.cos(a)*sp; s.vy=Math.sin(a)*sp; s.g=55; s.maxLife=s.life=1.3+Math.random()*0.9; s.a0=1; s.shrink=true; } }
-      stepBurst(dt); }; };
-
-  function setMode(m){ clearAll(); if(m==="stop"){ say("arrêté."); return; } if(MODES[m]){ MODES[m](); say(m+" ✔"); } }
-  var btns=document.querySelectorAll(".btn"); for(var i=0;i<btns.length;i++){ (function(b){ b.onclick=function(){ setMode(b.getAttribute("data-m")); }; })(btns[i]); }
-
-  app.ticker.add(function(){ var dt=Math.min(0.05,app.ticker.deltaMS/1000); if(updateFn) updateFn(dt); fpsEl.textContent=Math.round(app.ticker.FPS)+" fps"; });
-  say("moteur prêt ✔ — choisis un effet.");
-}
-
-(function wait(n){ if(typeof PIXI!=="undefined"){ boot(); return; } if(n<=0){ say("❌ PixiJS non chargé (réseau/CDN ?)."); return; } setTimeout(function(){ wait(n-1); },300); })(25);
+var seg=document.querySelectorAll("#blend button");
+for(var i=0;i<seg.length;i++){ (function(b){ b.onclick=function(){
+  for(var j=0;j<seg.length;j++) seg[j].classList.remove("on");
+  b.classList.add("on");
+  var m=b.getAttribute("data-b"); ov.style.mixBlendMode=m;
+  cap.textContent="Mode : "+b.textContent;
+}; })(seg[i]); }
 </script>
 </body>
 </html>
