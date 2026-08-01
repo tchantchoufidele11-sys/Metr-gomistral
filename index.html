@@ -6291,22 +6291,22 @@ var ATMO_SHADERS={};
 ATMO_SHADERS["snow"]=ATMO_PRE+`void main(){ vec2 uv=v_texCoord; vec3 col=texture2D(uImage,uv).rgb; float t=uTime; float s=0.0;
  for(float k=0.0;k<3.0;k++){ float sc=7.0+k*6.0; vec2 g=vec2(uv.x*sc*(uRes.x/uRes.y), uv.y*sc - t*(0.10+k*0.06)*sc);
   g.x += sin(g.y*0.6+k*2.1)*0.6; vec2 id=floor(g), f=fract(g); float r=h21(id+k*23.0);
-  float d=length(f-vec2(0.5)); s += smoothstep(0.16+0.06*r,0.0,d)*(0.35+0.65*r)*(1.0-k*0.22); }
- col=mix(col, vec3(0.95,0.97,1.0), clamp(s*uAmt,0.0,0.85)); gl_FragColor=vec4(col,1.0); }`;
+  float d=length(f-vec2(0.5)); s += smoothstep(0.22+0.08*r,0.0,d)*(0.4+0.6*r)*(1.0-k*0.22); }
+ col=mix(col, vec3(0.95,0.97,1.0), clamp(s*uAmt,0.0,0.95)); gl_FragColor=vec4(col,1.0); }`;
 ATMO_SHADERS["rain"]=ATMO_PRE+`void main(){ vec2 uv=v_texCoord; vec3 col=texture2D(uImage,uv).rgb; float t=uTime; float r=0.0;
  for(float k=0.0;k<2.0;k++){ vec2 g=vec2(uv.x*(50.0+k*24.0)*(uRes.x/uRes.y), uv.y*(11.0+k*5.0) - t*(7.0+k*4.0));
   vec2 id=floor(g), f=fract(g); float on=step(0.6,h21(id+k*3.1));
   float streak=smoothstep(0.45,0.0,abs(f.x-0.5))*smoothstep(1.0,0.1,f.y); r+=streak*on*(0.6-k*0.2); }
- col += vec3(0.55,0.65,0.8)*r*uAmt*0.7; gl_FragColor=vec4(clamp(col,0.0,1.0),1.0); }`;
+ col += vec3(0.6,0.7,0.9)*r*uAmt*1.15; gl_FragColor=vec4(clamp(col,0.0,1.0),1.0); }`;
 ATMO_SHADERS["golddust"]=ATMO_PRE+`void main(){ vec2 uv=v_texCoord; vec3 col=texture2D(uImage,uv).rgb; float t=uTime; float g=0.0;
  for(float k=0.0;k<3.0;k++){ float sc=6.0+k*5.0; vec2 p=vec2(uv.x*sc*(uRes.x/uRes.y), uv.y*sc + t*(0.05+k*0.03)*sc);
   p.x += sin(p.y*0.4+k*1.7)*0.7; vec2 id=floor(p), f=fract(p); float r=h21(id+k*11.0); float d=length(f-0.5);
   g += smoothstep(0.4,0.0,d)*(0.25+0.75*r)*(0.55+0.45*sin(t*2.2+r*6.28))*(1.0-k*0.2); }
- col += vec3(1.0,0.82,0.42)*g*uAmt; gl_FragColor=vec4(clamp(col,0.0,1.0),1.0); }`;
+ col += vec3(1.0,0.82,0.42)*g*uAmt*1.35; gl_FragColor=vec4(clamp(col,0.0,1.0),1.0); }`;
 ATMO_SHADERS["godrays"]=ATMO_PRE+`void main(){ vec2 uv=v_texCoord; vec3 col=texture2D(uImage,uv).rgb; vec2 src=vec2(0.5,0.14);
  vec2 delta=(uv-src)*(1.0/16.0); vec2 c=uv; float illum=1.0, acc=0.0;
  for(int i=0;i<16;i++){ c-=delta; vec3 s=texture2D(uImage,c).rgb; float b=max(0.0,dot(s,vec3(0.299,0.587,0.114))-0.62); acc+=b*illum; illum*=0.93; }
- col += vec3(1.0,0.93,0.72)*acc*uAmt*0.6; gl_FragColor=vec4(clamp(col,0.0,1.0),1.0); }`;
+ col += vec3(1.0,0.93,0.72)*acc*uAmt*0.95; gl_FragColor=vec4(clamp(col,0.0,1.0),1.0); }`;
 ATMO_SHADERS["embers"]=ATMO_PRE+`void main(){ vec2 uv=v_texCoord; vec3 col=texture2D(uImage,uv).rgb; float t=uTime; float e=0.0;
  for(float k=0.0;k<3.0;k++){ float sc=9.0+k*7.0; vec2 p=vec2(uv.x*sc*(uRes.x/uRes.y), uv.y*sc + t*(0.35+k*0.25)*sc);
   p.x += sin(p.y*0.5+k*2.0)*0.5; vec2 id=floor(p), f=fract(p); float r=h21(id+k*19.0); float d=length(f-0.5);
@@ -6323,8 +6323,8 @@ ATMO_SHADERS["fog"]=ATMO_PRE+`void main(){ vec2 uv=v_texCoord; vec3 col=texture2
   float v=mix(mix(h21(ip),h21(ip+vec2(1.0,0.0)),fp.x), mix(h21(ip+vec2(0.0,1.0)),h21(ip+vec2(1.0,1.0)),fp.x), fp.y); n+=v*a; a*=0.5; p*=2.0; }
  float fog=smoothstep(0.3,0.9,n)*uAmt*0.5; col=mix(col, vec3(0.8,0.82,0.86), fog); gl_FragColor=vec4(col,1.0); }`;
 var ATMO_NAMES=["snow","rain","golddust","godrays","embers","fireflies","fog"];
-var ATMO_FREQ={cinema:0.30,doux:0.26,dynamique:0.45,voyage:0.55};
-var ATMO_AMT={cinema:0.5,doux:0.45,dynamique:0.8,voyage:0.7};
+var ATMO_FREQ={cinema:0.60,doux:0.55,dynamique:0.72,voyage:0.78};
+var ATMO_AMT={cinema:1.0,doux:0.9,dynamique:1.4,voyage:1.2};
 var ATMO={ready:false,progs:{},okNames:null,okCount:0,fbo:null};
 var _atmo=null, _atmoAmt=0.6, _atmoBag=[];
 function atmGet(name){ if(!name) return null; if(Object.prototype.hasOwnProperty.call(ATMO.progs,name)) return ATMO.progs[name]; var s=ATMO_SHADERS[name]; if(!s){ ATMO.progs[name]=null; return null; } var p=trProgGT(s); ATMO.progs[name]=p||null; return ATMO.progs[name]; }
