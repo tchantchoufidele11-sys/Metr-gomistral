@@ -3,8 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
-<title>Test particules — PixiJS</title>
-<script src="https://cdn.jsdelivr.net/npm/pixi.js@7/dist/pixi.min.js"></script>
+<title>Test particules — tsParticles</title>
+<script src="https://cdn.jsdelivr.net/npm/@tsparticles/confetti@3/tsparticles.confetti.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tsparticles/fireworks@3/tsparticles.fireworks.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tsparticles@3/tsparticles.bundle.min.js"></script>
 <style>
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;background:#0a1024;color:#eef2f9;font:15px/1.4 -apple-system,system-ui,sans-serif}
@@ -15,8 +17,7 @@
     background:linear-gradient(160deg,#12233f 0%,#274a6b 45%,#7c6a52 80%,#c9a06a 100%);box-shadow:0 10px 30px rgba(0,0,0,.5)}
   .stage .scene{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;padding-bottom:12%}
   .stage .scene b{font:700 22px Georgia,serif;color:rgba(255,255,255,.85);text-shadow:0 2px 8px rgba(0,0,0,.4)}
-  #pixi{position:absolute;inset:0;z-index:2;pointer-events:none}
-  #pixi canvas{width:100%!important;height:100%!important;display:block}
+  #tsp{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
   #fps{position:absolute;top:8px;right:10px;z-index:3;background:rgba(6,12,26,.6);border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:3px 9px;font:600 11px ui-monospace,monospace;color:#dfe7f6}
   .row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
   .btn{flex:1;min-width:46%;border:1px solid #26345c;background:#141d3a;color:#eaf0fb;border-radius:11px;padding:13px;font:600 14px system-ui;cursor:pointer}
@@ -28,11 +29,11 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Test particules — PixiJS</h1>
-  <p class="sub">Vrai moteur WebGL open-source. Particules à base de vraies textures douces (le secret du réalisme).</p>
+  <h1>Test particules — tsParticles</h1>
+  <p class="sub">Neige/pluie densifiées avec profondeur. Confettis & feux = fonctions officielles (belles et fiables).</p>
   <div class="stage">
     <div class="scene"><b>scène test</b></div>
-    <div id="pixi"></div>
+    <canvas id="tsp"></canvas>
     <div id="fps">— fps</div>
   </div>
   <div class="row">
@@ -40,87 +41,100 @@
     <button class="btn" id="rain">🌧️ Pluie</button>
   </div>
   <div class="row">
+    <button class="btn" id="confetti">🎉 Confettis</button>
+    <button class="btn" id="fw">🎆 Feux d'artifice</button>
+  </div>
+  <div class="row">
     <button class="btn stop" id="stop">■ Tout arrêter</button>
   </div>
   <div id="log">Chargement du moteur…</div>
-  <p class="hint">Compare le réalisme avec tsParticles. Regarde le FPS. Dis-moi : neige / pluie plus crédibles ici ?</p>
+  <p class="hint">Neige/pluie doivent être denses et crédibles. Confettis = belle rafale. Feux = explosions. Enchaîne : pas de plantage. FPS visible.</p>
 </div>
 <script>
 "use strict";
-var log=document.getElementById("log"), fpsEl=document.getElementById("fps"), host=document.getElementById("pixi");
+var log=document.getElementById("log"), fpsEl=document.getElementById("fps");
 function say(s){ log.textContent=s; }
+var engineReady=false, ambient=null, fwInst=null, seq=0;
+function ready(){ return engineReady && typeof tsParticles!=="undefined"; }
 
-function boot(){
-  if(typeof PIXI==="undefined"){ say("❌ PixiJS non chargé (réseau/CDN ?)."); return; }
-  var app;
-  try{
-    app=new PIXI.Application({ backgroundAlpha:0, antialias:true, autoDensity:true, resolution:Math.min(2,window.devicePixelRatio||1) });
-  }catch(e){ say("init PixiJS échouée : "+e); return; }
-  host.appendChild(app.view);
-  app.view.style.width="100%"; app.view.style.height="100%"; app.view.style.display="block";
-  function fit(){ var r=host.getBoundingClientRect(); if(r.width>0) app.renderer.resize(r.width,r.height); }
-  fit(); window.addEventListener("resize",fit); setTimeout(fit,300);
-
-  /* texture douce (flocon / goutte) generee en memoire */
-  function softTex(){
-    var s=64, c=document.createElement("canvas"); c.width=c.height=s; var x=c.getContext("2d");
-    var g=x.createRadialGradient(s/2,s/2,0,s/2,s/2,s/2);
-    g.addColorStop(0,"rgba(255,255,255,1)"); g.addColorStop(0.35,"rgba(255,255,255,0.7)"); g.addColorStop(1,"rgba(255,255,255,0)");
-    x.fillStyle=g; x.fillRect(0,0,s,s); return PIXI.Texture.from(c);
+/* --- neige réaliste : dense + profondeur (proches gros/nets, lointains petits/flous) --- */
+var CFG_SNOW={
+  fullScreen:{enable:false}, background:{color:"transparent"}, detectRetina:true, fpsLimit:60,
+  particles:{
+    number:{value:420,density:{enable:true,area:700}},
+    color:{value:"#ffffff"}, shape:{type:"circle"},
+    opacity:{value:{min:0.35,max:1}},
+    size:{value:{min:1,max:5}},
+    move:{enable:true,direction:"bottom",speed:{min:2,max:7},straight:false,drift:{min:-1.2,max:1.2}},
+    wobble:{enable:true,distance:20,speed:{min:-6,max:6}},
+    zIndex:{value:{min:0,max:100},opacityRate:0.4,sizeRate:0.6}
   }
-  var TEX=softTex();
-  var container=new PIXI.Container(); app.stage.addChild(container);
-  var parts=[], mode=null;
-
-  function clearParts(){ container.removeChildren(); parts.length=0; }
-  function makeSnow(){
-    clearParts(); mode="snow"; var W=app.screen.width, H=app.screen.height;
-    for(var i=0;i<650;i++){
-      var s=new PIXI.Sprite(TEX); s.anchor.set(0.5);
-      var d=Math.random();                       /* profondeur 0..1 */
-      s.scale.set(0.05+d*0.42);
-      s.alpha=0.25+d*0.75;
-      s.x=Math.random()*W; s.y=Math.random()*H;
-      s.vy=18+d*120; s.sway=Math.random()*6.28; s.swayAmp=6+d*26;
-      container.addChild(s); parts.push(s);
-    }
-    say("neige ✔ (PixiJS)");
+};
+/* --- pluie réaliste : traînées fines, rapides, denses --- */
+var CFG_RAIN={
+  fullScreen:{enable:false}, background:{color:"transparent"}, detectRetina:true, fpsLimit:60,
+  particles:{
+    number:{value:340,density:{enable:true,area:700}},
+    color:{value:"#cfe0f5"}, shape:{type:"circle"},
+    opacity:{value:{min:0.25,max:0.55}},
+    size:{value:{min:0.6,max:1.4}},
+    move:{enable:true,direction:"bottom",speed:{min:34,max:48},straight:true,
+      trail:{enable:true,length:14,fill:{color:"transparent"}}}
   }
-  function makeRain(){
-    clearParts(); mode="rain"; var W=app.screen.width, H=app.screen.height;
-    for(var i=0;i<420;i++){
-      var s=new PIXI.Sprite(TEX); s.anchor.set(0.5); s.tint=0xbcd6f5;
-      var d=Math.random();
-      s.scale.set(0.03+d*0.05, 0.35+d*0.75);      /* etire vertical -> traînee */
-      s.alpha=0.2+d*0.45;
-      s.x=Math.random()*W; s.y=Math.random()*H; s.vy=360+d*520;
-      container.addChild(s); parts.push(s);
-    }
-    say("pluie ✔ (PixiJS)");
-  }
+};
 
-  app.ticker.add(function(){
-    var W=app.screen.width, H=app.screen.height, dts=app.ticker.deltaMS/1000;
-    for(var i=0;i<parts.length;i++){ var s=parts[i];
-      s.y+=s.vy*dts;
-      if(mode==="snow"){ s.sway+=dts*1.6; s.x+=Math.sin(s.sway)*s.swayAmp*dts; }
-      if(s.y>H+24){ s.y=-24; s.x=Math.random()*W; }
-      if(s.x<-24){ s.x=W+24; } else if(s.x>W+24){ s.x=-24; }
-    }
-    fpsEl.textContent=Math.round(app.ticker.FPS)+" fps";
-  });
-
-  document.getElementById("snow").onclick=makeSnow;
-  document.getElementById("rain").onclick=makeRain;
-  document.getElementById("stop").onclick=function(){ clearParts(); mode=null; say("arrêté."); };
-  say("moteur prêt ✔ — appuie sur Neige ou Pluie.");
+/* --- ambiance (neige/pluie) : verrou anti-course --- */
+function loadAmbient(cfg,name){
+  if(!ready()){ say("moteur pas prêt…"); return; }
+  var my=++seq;
+  var prev=ambient; ambient=null; if(prev){ try{ prev.destroy(); }catch(e){} }
+  tsParticles.load({ id:"tsp", options:cfg }).then(function(c){
+    if(my!==seq){ try{ c&&c.destroy(); }catch(e){} return; }
+    ambient=c; say(name+" ✔");
+  }).catch(function(e){ say("échec "+name+" : "+e); });
 }
+function stopFw(){ if(fwInst){ try{ fwInst.stop&&fwInst.stop(); }catch(e){} try{ fwInst.destroy&&fwInst.destroy(); }catch(e){} fwInst=null; } }
 
-(function wait(n){
-  if(typeof PIXI!=="undefined"){ boot(); return; }
-  if(n<=0){ say("❌ PixiJS non chargé (réseau/CDN ?)."); return; }
-  setTimeout(function(){ wait(n-1); }, 300);
-})(25);
+document.getElementById("snow").onclick=function(){ loadAmbient(CFG_SNOW,"neige"); };
+document.getElementById("rain").onclick=function(){ loadAmbient(CFG_RAIN,"pluie"); };
+document.getElementById("confetti").onclick=function(){
+  if(typeof confetti==="undefined"){ say("confetti pas chargé"); return; }
+  try{
+    confetti({ particleCount:200, spread:120, startVelocity:48, origin:{x:0.5,y:0.55},
+      colors:["#E0A33E","#ffffff","#5c9ce0","#ff6b6b","#7bd88f","#bf5af2"], ticks:260, scalar:1.1, gravity:1.1 });
+    say("confettis ✔");
+  }catch(e){ say("échec confettis : "+e); }
+};
+document.getElementById("fw").onclick=function(){
+  if(typeof fireworks==="undefined"){ say("fireworks pas chargé"); return; }
+  stopFw();
+  try{ fwInst=fireworks({ intensity:12, brightness:{min:55,max:85} }); say("feux d'artifice ✔"); }
+  catch(e){ say("échec feux : "+e); }
+};
+document.getElementById("stop").onclick=function(){
+  seq++; var p=ambient; ambient=null; if(p){ try{ p.destroy(); }catch(e){} } stopFw(); say("arrêté.");
+};
+
+/* FPS */
+var frames=0, lastT=performance.now();
+function fpsLoop(t){ frames++; if(t-lastT>=1000){ fpsEl.textContent=frames+" fps"; frames=0; lastT=t; } requestAnimationFrame(fpsLoop); }
+requestAnimationFrame(fpsLoop);
+
+/* Init : attendre les scripts, PUIS loadFull (indispensable pour la neige/pluie) */
+(function initEngine(){
+  var tries=0;
+  function step(){
+    if(typeof tsParticles==="undefined"){ if(tries++>=25){ say("❌ moteur non chargé (réseau/CDN ?)."); return; } setTimeout(step,300); return; }
+    try{
+      if(typeof loadFull==="function"){
+        var r=loadFull(tsParticles);
+        if(r&&r.then){ r.then(function(){ engineReady=true; say("moteur prêt ✔ — appuie."); }).catch(function(e){ say("init échouée : "+e); }); }
+        else { engineReady=true; say("moteur prêt ✔ — appuie."); }
+      } else { engineReady=true; say("moteur prêt (sans loadFull) — appuie."); }
+    }catch(e){ say("init échouée : "+e); }
+  }
+  step();
+})();
 </script>
 </body>
 </html>
