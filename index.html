@@ -221,12 +221,14 @@ function buildPartition(){
     var lo=lastCut+M.minSec, hi=lastCut+M.maxSec, tgt=lastCut+M.tgtSec;
     while(bi<beats.length && beats[bi]<lo) bi++;
     if(bi>=beats.length) break;
+    var eLoc=energyAt(lastCut);
+    var wS=(eLoc>0.55)?1.4:0.7, wM=(eLoc>0.55)?0.35:0.9;   /* energique -> couper sur les gros coups ; calme -> sur le "1" */
     var bestK=-1, bestScore=-1;
     for(var k=bi; k<beats.length && beats[k]<=hi; k++){
       var s=(str[k]||0);
       var prox=1-Math.min(1,Math.abs(beats[k]-tgt)/span);
       var mt=(A.metric&&A.metric[k]!=null)?A.metric[k]:0.4;
-      var score=s*0.7 + mt*0.9 + prox*0.25;    /* on coupe sur le "1" de la mesure, pas un contretemps */
+      var score=s*wS + mt*wM + prox*0.25;
       if(score>bestScore){ bestScore=score; bestK=k; }
     }
     if(bestK<0) bestK=bi;                       /* fenêtre sans temps : le 1er après le plancher (reste un vrai temps) */
