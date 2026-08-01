@@ -212,6 +212,7 @@ function snapKick(t){ if(!A||!A.kEnv||!A.efps) return t; var f=A.efps, i=Math.ro
 function buildPartition(){
   SEGS=[]; stripDirty=true; if(!A||!A.beats||A.beats.length<2) return;
   if(glReady && TR.ready) trCompileAll();
+  trReset();
   var M=MOODS[MOOD], beats=A.beats, str=A.strength||[], dur=A.dur;
   /* INVERSION : parmi les temps de [min,max] secondes, on prend le PLUS FORT.
      -> chaque coupe tombe sur un accent réel ; jamais de seconde arbitraire. */
@@ -6314,47 +6315,61 @@ function trMix(name,p,sg){
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D,null); gl.activeTexture(gl.TEXTURE0);
   gl.bindFramebuffer(gl.FRAMEBUFFER,null); return true;
 }
-var FAM={
-  calm:["BlockDissolve","ColourDistance","Dreamy","EdgeTransition","HSVfade","StaticFade","colorphase","dissolve","fade","fadecolor","luma","multiply_blend"],
-  burn:["FilmBurn","Overexposure","burn","burn0","luminance_melt","undulatingBurnOut"],
-  drop:["AdvancedMosaic","CrazyParametricFun","GlitchDisplace","GlitchMemories","Mosaic","StripDatamoshGlitch","TVStatic","hexagonalize","mosaic_transition","old_tv_lost_signal","parametric_glitch","pixelize","randomNoisex","static_wipe"],
-  zoom:["CrossZoom","DreamyZoom","Radial","Revolve_Left","RotateScaleVanish","SimpleZoom","SimpleZoomOut","Swirl","ZoomInCircles","ZoomLeftWipe","ZoomRigthWipe","kaleidoscope","pinwheel","polar_function","powerKaleido","rotateTransition","rotate_scale_fade","zoomInOut"],
-  rising:["Bounce","ButterflyWaveScrawler","DefocusBlur","LinearBlur","WaterDrop","crosswarp","displacement","morph","ripple","tangentMotionBlur"],
-  dir:["Directional","DirectionalScaled","Drop_Zone_Flicker","HorizontalClose","HorizontalOpen","LeftRight","TopBottom","VerticalClose","VerticalOpen","angular","crosshatch","directional-easing","directionalwarp","directionalwipe","fadegrayscale","flyeye","randomsquares","scale-in","splitSlideInHorizontal","splitSlideInOutHorizontal","splitSlideInOutVertical","splitSlideInVertical","splitSlideOutHorizontal","splitSlideOutVertical","squeeze","wind","wipeDown","wipeLeft","wipeRight","wipeUp","x_axis_translation"],
-  cont:["CrossZoom","crosswarp","LinearBlur","morph","DefocusBlur","dissolve","tangentMotionBlur"],
-  shape:["CircleCrop","PolkaDotsCurtain","Rectangle","RectangleCrop","StarWipe","TilesWave","cannabisleaf","chessboard","circle","circleopen","coord-from-in","fragment","heart","perlin","squareswire","windowslice"],
-  narr:["BookFlip","BowTieHorizontal","BowTieVertical","BowTieWithParameter","Box","DoomScreenTransition","Fold","GridFlip","InvertedPageCurl","PuzzleRight","Rolls","SimpleFlip","Slides","StereoViewer","cube","doorway","swap","windowblinds"],
-  warm:["dissolve","colorphase","fadecolor","ColourDistance","luma","morph","HSVfade","multiply_blend"]
+var TIERS={
+  subtle:["BlockDissolve","ColourDistance","DefocusBlur","EdgeTransition","HSVfade","LinearBlur","StaticFade","colorphase","directional-easing","dissolve","fade","fadecolor","fadegrayscale","luma","morph","multiply_blend"],
+  elegant:["BookFlip","Bounce","BowTieHorizontal","BowTieVertical","BowTieWithParameter","Box","CircleCrop","CrossZoom","Directional","DirectionalScaled","Dreamy","DreamyZoom","Drop_Zone_Flicker","Fold","GridFlip","HorizontalClose","HorizontalOpen","LeftRight","Rectangle","RectangleCrop","Rolls","SimpleFlip","SimpleZoom","SimpleZoomOut","Slides","TopBottom","VerticalClose","VerticalOpen","WaterDrop","ZoomLeftWipe","ZoomRigthWipe","angular","chessboard","circle","circleopen","coord-from-in","crosshatch","crosswarp","cube","directionalwarp","directionalwipe","displacement","doorway","fragment","heart","perlin","polar_function","randomsquares","ripple","rotateTransition","rotate_scale_fade","scale-in","splitSlideInHorizontal","splitSlideInOutHorizontal","splitSlideInOutVertical","splitSlideInVertical","splitSlideOutHorizontal","splitSlideOutVertical","squareswire","squeeze","swap","tangentMotionBlur","wind","windowslice","wipeDown","wipeLeft","wipeRight","wipeUp","x_axis_translation","zoomInOut"],
+  spectacular:["AdvancedMosaic","ButterflyWaveScrawler","CrazyParametricFun","DoomScreenTransition","FilmBurn","GlitchDisplace","GlitchMemories","InvertedPageCurl","Mosaic","Overexposure","PolkaDotsCurtain","PuzzleRight","Radial","Revolve_Left","RotateScaleVanish","StarWipe","StereoViewer","StripDatamoshGlitch","Swirl","TVStatic","TilesWave","ZoomInCircles","burn","burn0","cannabisleaf","flyeye","hexagonalize","kaleidoscope","luminance_melt","mosaic_transition","old_tv_lost_signal","parametric_glitch","pinwheel","pixelize","powerKaleido","randomNoisex","static_wipe","undulatingBurnOut","windowblinds"]
 };
-function pickFam(fam, idx, avoid){
-  var pool=(TR.okNames&&TR.okNames.length)? fam.filter(function(n){ return TR.okNames.indexOf(n)>=0; }) : fam.slice();
+var MOODTRANS={
+  cinema:{sub:0.80,ele:0.16,dur:0.60},
+  doux:{sub:0.90,ele:0.10,dur:0.72},
+  dynamique:{sub:0.34,ele:0.34,dur:0.34},
+  voyage:{sub:0.60,ele:0.34,dur:0.50}
+};
+var _gtHist=[];
+function trReset(){ _gtHist=[]; }
+function pickTier(tier, idx, prefs){
+  var base=TIERS[tier]||TIERS.subtle;
+  var pool=(TR.okNames&&TR.okNames.length)? base.filter(function(n){ return TR.okNames.indexOf(n)>=0; }) : base.slice();
   if(!pool.length) pool=(TR.okNames&&TR.okNames.length)?TR.okNames:GT_NAMES;
-  var cand=pool.filter(function(n){ return avoid.indexOf(n)<0; }); if(!cand.length) cand=pool;
+  var pref=(prefs||[]).filter(function(n){ return pool.indexOf(n)>=0; });
+  var src=pref.length?pref:pool;
+  var cand=src.filter(function(n){ return _gtHist.indexOf(n)<0; }); if(!cand.length) cand=src;
   return cand[idx%cand.length];
 }
 function gtChoose(idx,sg,prev,photos,energy,mood){
-  var seed=(A&&A.beats)?(A.beats.length%97):0; idx=idx+seed;
+  var seed=(A&&A.beats)?(A.beats.length%89):0, k=idx+seed;
   var neutral={lum:0.5,warm:0,sat:0.3,detail:0.2,portrait:false};
-  var A=(prev&&photos[prev.img]&&photos[prev.img].feat)||neutral;
+  var A2=(prev&&photos[prev.img]&&photos[prev.img].feat)||neutral;
   var B=(photos[sg.img]&&photos[sg.img].feat)||neutral;
   var e=energy, strong=sg.strong;
   var ePrev=energyAt(Math.max(0,sg.start-0.6)), slope=e-ePrev;
-  var dL=Math.abs(A.lum-B.lum), dW=Math.abs(A.warm-B.warm);
-  var bothLand=(!A.portrait&&!B.portrait), similar=(dL<0.14 && dW<0.10);
-  var avoid=[]; if(prev&&prev.trans) avoid.push(prev.trans); if(prev&&prev._prev&&prev._prev.trans) avoid.push(prev._prev.trans);
-  var fam;
-  if(e<0.22) fam=FAM.calm;                                   /* calme -> fondu doux */
-  else if(strong && dL>0.32) fam=FAM.burn;                   /* accent + saut de lumiere -> pellicule/burn */
-  else if(strong && e>0.78) fam=FAM.drop;                    /* drop -> glitch/geometrique */
-  else if(strong && e>0.60) fam=FAM.zoom;                    /* gros temps -> zoom punch */
-  else if(slope>0.12) fam=FAM.rising;                        /* montee musicale -> balayage */
-  else if(bothLand && similar) fam=FAM.cont;                 /* meme horizon -> cross zoom (continuite) */
-  else if(dW>0.20) fam=FAM.warm;                             /* gros virage couleur -> dissolve/color */
-  else if((A.portrait||B.portrait) && !strong) fam=FAM.shape;/* portrait -> iris/forme */
-  else if(e>0.50) fam=FAM.dir;                               /* moyen -> wipe directionnel */
-  else fam=(mood==="cinema")?FAM.narr:FAM.calm;              /* sinon selon l'ambiance */
-  if(mood==="dynamique" && strong && e>0.5) fam=FAM.drop;    /* biais Dynamique : plus nerveux */
-  return pickFam(fam, idx, avoid);
+  var dL=Math.abs(A2.lum-B.lum), dW=Math.abs(A2.warm-B.warm);
+  var bothLand=(!A2.portrait&&!B.portrait), similar=(dL<0.14&&dW<0.10), portrait=(A2.portrait||B.portrait);
+  var prof=MOODTRANS[mood]||MOODTRANS.cinema;
+  var specRecent=0; for(var i=0;i<_gtHist.length;i++){ if(TIERS.spectacular.indexOf(_gtHist[i])>=0) specRecent++; }
+  var specAllowed=(mood==="dynamique"?0.28:(mood==="cinema"?0.05:(mood==="voyage"?0.06:0.0)));
+  var tier;
+  if(e<0.25) tier="subtle";
+  else if(strong && e>0.72 && specAllowed>0 && specRecent<1 && ((k*0.618)%1)<specAllowed*3) tier="spectacular";
+  else { var r=(k*0.618)%1; tier=(r < prof.sub/(prof.sub+prof.ele))?"subtle":"elegant"; }
+  var prefs=[];
+  if(tier==="subtle"){ if(dW>0.20) prefs=["colorphase","fadecolor","ColourDistance"]; else if(A2.detail>0.22&&B.detail>0.22) prefs=["dissolve","BlockDissolve","LinearBlur"]; else prefs=["fade","fadegrayscale","luma","morph"]; }
+  else if(tier==="elegant"){
+    if(bothLand&&similar) prefs=["CrossZoom","crosswarp","LinearBlur","DefocusBlur"];
+    else if(portrait) prefs=["circle","circleopen","CircleCrop","heart"];
+    else if(dW>0.18) prefs=["WaterDrop","ripple","colorphase"];
+    else if(slope>0.12) prefs=["directionalwarp","crosswarp","wind","x_axis_translation"];
+    else prefs=["directionalwipe","wipeLeft","wipeRight","angular","cube","doorway","SimpleZoom","Directional"];
+  } else {
+    if(strong&&dL>0.30) prefs=["FilmBurn","burn","undulatingBurnOut","Overexposure"];
+    else if(e>0.8) prefs=["GlitchDisplace","StripDatamoshGlitch","Mosaic","pixelize","TVStatic"];
+    else prefs=["kaleidoscope","Swirl","pinwheel","RotateScaleVanish","ZoomInCircles"];
+  }
+  var name=pickTier(tier, k, prefs);
+  _gtHist.push(name); if(_gtHist.length>4) _gtHist.shift();
+  sg.trDur=prof.dur;
+  return name;
 }
 function initGL(){
   var cv=document.getElementById("gl");
@@ -6421,7 +6436,7 @@ function loop(){
   if(idx<0 && SEGS.length) idx=(t<SEGS[0].start)?0:SEGS.length-1;
   var sg=(idx>=0)?SEGS[idx]:null, prev=(idx>0)?SEGS[idx-1]:null, into=sg?(t-sg.start):0;
   var trName=sg?sg.trans:"none";
-  var TRd=Math.min((TR_DUR[trName]!=null?TR_DUR[trName]:0),(sg?(sg.end-sg.start)*0.5:0));
+  var TRd=Math.min((sg&&sg.trDur!=null?sg.trDur:0.5),(sg?(sg.end-sg.start)*0.5:0));
   var inTrans=(sg&&prev&&TRd>0&&into<TRd&&trName!=="cut"&&trName!=="none");
   var strongPulse=(sg&&sg.strong&&into<0.10)?(1-into/0.10):0;
   if(glReady && TR.ready && inTrans){
