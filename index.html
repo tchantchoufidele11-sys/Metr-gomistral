@@ -6236,16 +6236,16 @@ var MOODTRANS={
   dynamique:{sub:0.34,ele:0.34,dur:0.34},
   voyage:{sub:0.60,ele:0.34,dur:0.50}
 };
-var _gtHist=[];
-function trReset(){ _gtHist=[]; }
-function pickTier(tier, idx, prefs){
-  var base=TIERS[tier]||TIERS.subtle;
-  var pool=(TR.okNames&&TR.okNames.length)? base.filter(function(n){ return TR.okNames.indexOf(n)>=0; }) : base.slice();
-  if(!pool.length) pool=(TR.okNames&&TR.okNames.length)?TR.okNames:GT_NAMES;
-  var pref=(prefs||[]).filter(function(n){ return pool.indexOf(n)>=0; });
-  var src=pref.length?pref:pool;
-  var cand=src.filter(function(n){ return _gtHist.indexOf(n)<0; }); if(!cand.length) cand=src;
-  return cand[idx%cand.length];
+var _bag=[];
+function trReset(){ _bag=(TR.okNames&&TR.okNames.length)?TR.okNames.slice():GT_NAMES.slice(); }
+function bagTake(name){ var i=_bag.indexOf(name); if(i>=0) _bag.splice(i,1); return name; }
+function bagPick(prefLists, idx){
+  if(!_bag.length){ _bag=(TR.okNames&&TR.okNames.length)?TR.okNames.slice():GT_NAMES.slice(); }   /* sac vide -> on recharge (tout est passe) */
+  for(var i=0;i<prefLists.length;i++){
+    var cand=prefLists[i].filter(function(n){ return _bag.indexOf(n)>=0; });
+    if(cand.length) return bagTake(cand[idx%cand.length]);
+  }
+  return bagTake(_bag[idx%_bag.length]);
 }
 function gtChoose(idx,sg,prev,photos,energy,mood){
   var seed=(A&&A.beats)?(A.beats.length%89):0, k=idx+seed;
@@ -6257,14 +6257,13 @@ function gtChoose(idx,sg,prev,photos,energy,mood){
   var dL=Math.abs(A2.lum-B.lum), dW=Math.abs(A2.warm-B.warm);
   var bothLand=(!A2.portrait&&!B.portrait), similar=(dL<0.14&&dW<0.10), portrait=(A2.portrait||B.portrait);
   var prof=MOODTRANS[mood]||MOODTRANS.cinema;
-  var specRecent=0; for(var i=0;i<_gtHist.length;i++){ if(TIERS.spectacular.indexOf(_gtHist[i])>=0) specRecent++; }
   var specAllowed=(mood==="dynamique"?0.28:(mood==="cinema"?0.05:(mood==="voyage"?0.06:0.0)));
   var tier;
   if(e<0.25) tier="subtle";
-  else if(strong && e>0.72 && specAllowed>0 && specRecent<1 && ((k*0.618)%1)<specAllowed*3) tier="spectacular";
+  else if(strong && e>0.72 && specAllowed>0 && ((k*0.618)%1)<specAllowed*3) tier="spectacular";
   else { var r=(k*0.618)%1; tier=(r < prof.sub/(prof.sub+prof.ele))?"subtle":"elegant"; }
   var prefs=[];
-  if(tier==="subtle"){ if(dW>0.20) prefs=["colorphase","fadecolor","ColourDistance"]; else if(A2.detail>0.22&&B.detail>0.22) prefs=["dissolve","BlockDissolve","LinearBlur"]; else prefs=["fade","fadegrayscale","luma","morph"]; }
+  if(tier==="subtle"){ if(dW>0.20) prefs=["colorphase","fadecolor","ColourDistance"]; else if(A2.detail>0.22&&B.detail>0.22) prefs=["dissolve","BlockDissolve","LinearBlur"]; else prefs=["fade","fadegrayscale","luma","StaticFade"]; }
   else if(tier==="elegant"){
     if(bothLand&&similar) prefs=["CrossZoom","crosswarp","LinearBlur","DefocusBlur"];
     else if(portrait) prefs=["circle","circleopen","CircleCrop","heart"];
@@ -6272,12 +6271,11 @@ function gtChoose(idx,sg,prev,photos,energy,mood){
     else if(slope>0.12) prefs=["directionalwarp","crosswarp","wind","x_axis_translation"];
     else prefs=["directionalwipe","wipeLeft","wipeRight","angular","cube","doorway","SimpleZoom","Directional"];
   } else {
-    if(strong&&dL>0.30) prefs=["FilmBurn","burn","undulatingBurnOut","Overexposure"];
-    else if(e>0.8) prefs=["GlitchDisplace","StripDatamoshGlitch","Mosaic","pixelize","TVStatic"];
-    else prefs=["kaleidoscope","Swirl","pinwheel","RotateScaleVanish","ZoomInCircles"];
+    if(strong&&dL>0.30) prefs=["FilmBurn","burn","Overexposure","undulatingBurnOut"];
+    else if(e>0.8) prefs=["Swirl","pinwheel","ZoomInCircles","RotateScaleVanish","kaleidoscope"];
+    else prefs=["CrossZoom","SimpleZoom","DirectionalScaled","cube","Radial"];
   }
-  var name=pickTier(tier, k, prefs);
-  _gtHist.push(name); if(_gtHist.length>4) _gtHist.shift();
+  var name=bagPick([prefs, TIERS[tier]||TIERS.subtle, GT_NAMES], k);
   sg.trDur=prof.dur;
   return name;
 }
