@@ -8,7 +8,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@tsparticles/confetti@3/tsparticles.confetti.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tsparticles/fireworks@3/tsparticles.fireworks.bundle.min.js"></script>
 <style>
-  :root{--gold:#E0A33E;}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;background:#0a1024;color:#eef2f9;font:15px/1.4 -apple-system,system-ui,sans-serif}
   .wrap{max-width:430px;margin:0 auto;padding:14px 14px 40px}
@@ -18,7 +17,7 @@
     background:linear-gradient(160deg,#1b3a63 0%,#2f5f86 40%,#c9a06a 75%,#e8c98a 100%);box-shadow:0 10px 30px rgba(0,0,0,.5)}
   .stage .scene{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;padding-bottom:12%}
   .stage .scene b{font:700 22px Georgia,serif;color:rgba(255,255,255,.85);text-shadow:0 2px 8px rgba(0,0,0,.4)}
-  canvas#tsp{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  canvas.pfx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
   .row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
   .btn{flex:1;min-width:46%;border:1px solid #26345c;background:#141d3a;color:#eaf0fb;border-radius:11px;padding:13px;font:600 14px system-ui;cursor:pointer}
   .btn:active{transform:translateY(1px)}
@@ -30,10 +29,11 @@
 <body>
 <div class="wrap">
   <h1>Test particules — tsParticles</h1>
-  <p class="sub">Le vrai moteur de particules, en surimpression devant l'image. Juge le réalisme et la fluidité sur ton iPhone.</p>
+  <p class="sub">Corrigé : canvas séparé pour les rafales (plus de plantage), pluie visible, feux réglés.</p>
   <div class="stage">
     <div class="scene"><b>scène test</b></div>
-    <canvas id="tsp"></canvas>
+    <canvas id="tsp" class="pfx"></canvas>
+    <canvas id="tsp2" class="pfx"></canvas>
   </div>
   <div class="row">
     <button class="btn" id="snow">❄️ Neige</button>
@@ -47,22 +47,25 @@
     <button class="btn stop" id="stop">■ Tout arrêter</button>
   </div>
   <div id="log">Chargement du moteur…</div>
-  <p class="hint">Ce qui compte : est-ce que ça <b>charge</b> (pas d'écran figé), est-ce <b>réaliste</b> (neige/pluie/confettis/feux crédibles), et est-ce <b>fluide</b> (pas de saccades) ? Si oui sur ton téléphone, je l'intègre au studio, piloté par la scène et la musique.</p>
+  <p class="hint">Teste : réaliste ? fluide ? Le plantage feux→confettis doit être réglé. La pluie doit se voir. Dis-moi effet par effet.</p>
 </div>
 <script>
 "use strict";
 var log=document.getElementById("log");
 function say(s){ log.textContent=s; }
-var container=null, fwInst=null;
 function ready(){ return (typeof tsParticles!=="undefined"); }
+var ambient=null, fwInst=null, confInst=null;
 
-function stopAmbient(){ if(container){ try{ container.destroy(); }catch(e){} container=null; } }
-function stopFw(){ if(fwInst){ try{ fwInst.stop&&fwInst.stop(); }catch(e){} try{ fwInst.destroy&&fwInst.destroy(); }catch(e){} fwInst=null; } }
-function stopAll(){ stopAmbient(); stopFw(); say("arrêté."); }
+function stopAmbient(){ if(ambient){ try{ ambient.destroy(); }catch(e){} ambient=null; } }
+function clearBursts(){
+  if(fwInst){ try{ fwInst.stop&&fwInst.stop(); }catch(e){} try{ fwInst.destroy&&fwInst.destroy(); }catch(e){} fwInst=null; }
+  if(confInst){ try{ confInst.destroy&&confInst.destroy(); }catch(e){} confInst=null; }
+}
+function stopAll(){ stopAmbient(); clearBursts(); say("arrêté."); }
 
 document.getElementById("snow").onclick=function(){
-  if(!ready()){ say("moteur pas encore prêt…"); return; }
-  stopAll();
+  if(!ready()){ say("moteur pas prêt…"); return; }
+  stopAmbient();
   tsParticles.load({ id:"tsp", options:{
     fullScreen:{enable:false}, background:{color:"transparent"}, detectRetina:true, fpsLimit:60,
     particles:{
@@ -72,52 +75,56 @@ document.getElementById("snow").onclick=function(){
       size:{value:{min:1,max:4}},
       move:{enable:true,direction:"bottom",speed:{min:1,max:3.5},straight:false,drift:{min:-0.6,max:0.6}},
       wobble:{enable:true,distance:12,speed:{min:-4,max:4}},
-      zIndex:{value:{min:0,max:100},opacityRate:0,sizeRate:0}
+      zIndex:{value:{min:0,max:100}}
     }
   }
-}).then(function(c){ container=c; say("neige ✔ (réaliste ? fluide ?)"); }).catch(function(e){ say("échec neige : "+e); });
+}).then(function(c){ ambient=c; say("neige ✔"); }).catch(function(e){ say("échec neige : "+e); });
 };
 
 document.getElementById("rain").onclick=function(){
-  if(!ready()){ say("moteur pas encore prêt…"); return; }
-  stopAll();
+  if(!ready()){ say("moteur pas prêt…"); return; }
+  stopAmbient();
   tsParticles.load({ id:"tsp", options:{
     fullScreen:{enable:false}, background:{color:"transparent"}, detectRetina:true, fpsLimit:60,
     particles:{
-      number:{value:260,density:{enable:true,area:800}},
-      color:{value:"#bcd4ee"}, shape:{type:"line"},
-      stroke:{width:1.4,color:"#cfe0f5"},
-      opacity:{value:{min:0.2,max:0.6}},
-      size:{value:{min:6,max:16}},
-      rotate:{value:8},
-      move:{enable:true,direction:"bottom",speed:{min:12,max:20},straight:true}
+      number:{value:200,density:{enable:true,area:800}},
+      color:{value:"#dceaff"}, shape:{type:"line"},
+      stroke:{width:2.2,color:"#eaf3ff"},
+      opacity:{value:{min:0.4,max:0.85}},
+      size:{value:{min:14,max:26}},
+      rotate:{value:6,animation:{enable:false}},
+      move:{enable:true,direction:"bottom",speed:{min:18,max:28},straight:true}
     }
   }
-}).then(function(c){ container=c; say("pluie ✔"); }).catch(function(e){ say("échec pluie : "+e); });
+}).then(function(c){ ambient=c; say("pluie ✔ (visible ?)"); }).catch(function(e){ say("échec pluie : "+e); });
 };
 
 document.getElementById("confetti").onclick=function(){
   if(typeof confetti==="undefined"){ say("confetti pas chargé"); return; }
+  clearBursts();
   try{
-    confetti("tsp",{ count:140, position:{x:50,y:55}, spread:80, ticks:220,
-      colors:["#E0A33E","#ffffff","#5c9ce0","#ff6b6b","#7bd88f"], scalar:1.1 });
+    var r=confetti("tsp2",{ count:150, position:{x:50,y:55}, spread:90, ticks:240,
+      colors:["#E0A33E","#ffffff","#5c9ce0","#ff6b6b","#7bd88f","#bf5af2"], scalar:1.1 });
+    if(r&&r.then) r.then(function(c){ confInst=c; });
     say("confettis ✔ (rafale)");
   }catch(e){ say("échec confettis : "+e); }
 };
 
 document.getElementById("fw").onclick=function(){
   if(typeof fireworks==="undefined"){ say("fireworks pas chargé"); return; }
-  stopFw();
-  try{ fwInst=fireworks("tsp",{ intensity:15, brightness:{min:50,max:80} }); say("feux d'artifice ✔"); }
-  catch(e){ say("échec feux : "+e); }
+  clearBursts();
+  try{
+    fwInst=fireworks("tsp2",{ intensity:12, brightness:{min:55,max:85},
+      colors:["#ff2d55","#ffd60a","#30d158","#0a84ff","#bf5af2","#ffffff"] });
+    say("feux d'artifice ✔");
+  }catch(e){ say("échec feux : "+e); }
 };
 
 document.getElementById("stop").onclick=stopAll;
 
-/* attente du chargement des scripts CDN */
 (function wait(n){
   if(ready()){ say("moteur prêt. Appuie sur un effet."); return; }
-  if(n<=0){ say("❌ le moteur n'a pas chargé (réseau/CDN ?). Recharge la page."); return; }
+  if(n<=0){ say("❌ le moteur n'a pas chargé (réseau/CDN ?)."); return; }
   setTimeout(function(){ wait(n-1); }, 300);
 })(20);
 </script>
