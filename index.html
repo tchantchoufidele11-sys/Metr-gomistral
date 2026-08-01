@@ -211,8 +211,8 @@ function snapKick(t){ if(!A||!A.kEnv||!A.efps) return t; var f=A.efps, i=Math.ro
   for(var k=i-w;k<=i+w;k++){ if(k<0||k>=A.kEnv.length) continue; if(A.kEnv[k]>bv){ bv=A.kEnv[k]; bk=k; } } return bk/f; }
 function buildPartition(){
   SEGS=[]; stripDirty=true; if(!A||!A.beats||A.beats.length<2) return;
-  if(glReady && TR.ready) trCompileAll();
-  trReset();
+  if(glReady && TR.ready){ trCompileAll(); atmCompileAll(); }
+  trReset(); atmReset();
   var M=MOODS[MOOD], beats=A.beats, str=A.strength||[], dur=A.dur;
   /* INVERSION : parmi les temps de [min,max] secondes, on prend le PLUS FORT.
      -> chaque coupe tombe sur un accent réel ; jamais de seconde arbitraire. */
@@ -249,6 +249,7 @@ function buildPartition(){
     sg.img=PHOTOS.length?(idx%PHOTOS.length):-1;
     sg.kbDir=(idx%2===0)?1:-1; sg.slideDir=(idx%2===0)?1:-1;
     sg.move=MOVES[idx%MOVES.length];
+    sg.atmo=atmChoose(idx,sg,MOOD,energyAt(sg.start));
     if(idx===0){ sg.trans="none"; return; }
     sg._prev=SEGS[idx-1];
     sg.trans=gtChoose(idx,sg,SEGS[idx-1],PHOTOS,energyAt(sg.start),MOOD);
@@ -6201,6 +6202,9 @@ function initTransitions(){ TR.ready=false; if(!gl) return;
     var tex=trTex(); gl.bindTexture(gl.TEXTURE_2D,tex); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,base.width,base.height,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
     var fb=gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER,fb); gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,tex,0); gl.bindFramebuffer(gl.FRAMEBUFFER,null);
     TR.fbo={fb:fb,tex:tex,w:base.width,h:base.height};
+    var atex=trTex(); gl.bindTexture(gl.TEXTURE_2D,atex); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,base.width,base.height,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+    var afb=gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER,afb); gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,atex,0); gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+    ATMO.fbo={fb:afb,tex:atex,w:base.width,h:base.height}; ATMO.ready=true;
     TR.ready=true;
   }catch(e){ TR.ready=false; }
 }
@@ -6281,6 +6285,78 @@ function gtChoose(idx,sg,prev,photos,energy,mood){
   sg.trDur=prof.dur;
   return name;
 }
+/* ==== Effets atmospheriques : shaders GPU proceduraux, dans le pipeline (panier + scene) ==== */
+var ATMO_PRE="precision highp float;\nvarying vec2 v_texCoord;\nuniform sampler2D uImage;\nuniform float uTime;\nuniform vec2 uRes;\nuniform float uAmt;\nfloat h21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}\n";
+var ATMO_SHADERS={};
+ATMO_SHADERS["snow"]=ATMO_PRE+`void main(){ vec2 uv=v_texCoord; vec3 col=texture2D(uImage,uv).rgb; float t=uTime; float s=0.0;
+ for(float k=0.0;k<3.0;k++){ float sc=7.0+k*6.0; vec2 g=vec2(uv.x*sc*(uRes.x/uRes.y), uv.y*sc - t*(0.10+k*0.06)*sc);
+  g.x += sin(g.y*0.6+k*2.1)*0.6; vec2 id=floor(g), f=fract(g); float r=h21(id+k*23.0);
+  float d=length(f-vec2(0.5)); s += smoothstep(0.16+0.06*r,0.0,d)*(0.35+0.65*r)*(1.0-k*0.22); }
+ col=mix(col, vec3(0.95,0.97,1.0), clamp(s*uAmt,0.0,0.85)); gl_FragColor=vec4(col,1.0); }`;
+ATMO_SHADERS["rain"]=ATMO_PRE+`void main(){ vec2 uv=v_texCoord; vec3 col=texture2D(uImage,uv).rgb; float t=uTime; float r=0.0;
+ for(float k=0.0;k<2.0;k++){ vec2 g=vec2(uv.x*(50.0+k*24.0)*(uRes.x/uRes.y), uv.y*(11.0+k*5.0) - t*(7.0+k*4.0));
+  vec2 id=floor(g), f=fract(g); float on=step(0.6,h21(id+k*3.1));
+  float streak=smoothstep(0.45,0.0,abs(f.x-0.5))*smoothstep(1.0,0.1,f.y); r+=streak*on*(0.6-k*0.2); }
+ col += vec3(0.55,0.65,0.8)*r*uAmt*0.7; gl_FragColor=vec4(clamp(col,0.0,1.0),1.0); }`;
+ATMO_SHADERS["golddust"]=ATMO_PRE+`void main(){ vec2 uv=v_texCoord; vec3 col=texture2D(uImage,uv).rgb; float t=uTime; float g=0.0;
+ for(float k=0.0;k<3.0;k++){ float sc=6.0+k*5.0; vec2 p=vec2(uv.x*sc*(uRes.x/uRes.y), uv.y*sc + t*(0.05+k*0.03)*sc);
+  p.x += sin(p.y*0.4+k*1.7)*0.7; vec2 id=floor(p), f=fract(p); float r=h21(id+k*11.0); float d=length(f-0.5);
+  g += smoothstep(0.4,0.0,d)*(0.25+0.75*r)*(0.55+0.45*sin(t*2.2+r*6.28))*(1.0-k*0.2); }
+ col += vec3(1.0,0.82,0.42)*g*uAmt; gl_FragColor=vec4(clamp(col,0.0,1.0),1.0); }`;
+ATMO_SHADERS["godrays"]=ATMO_PRE+`void main(){ vec2 uv=v_texCoord; vec3 col=texture2D(uImage,uv).rgb; vec2 src=vec2(0.5,0.14);
+ vec2 delta=(uv-src)*(1.0/16.0); vec2 c=uv; float illum=1.0, acc=0.0;
+ for(int i=0;i<16;i++){ c-=delta; vec3 s=texture2D(uImage,c).rgb; float b=max(0.0,dot(s,vec3(0.299,0.587,0.114))-0.62); acc+=b*illum; illum*=0.93; }
+ col += vec3(1.0,0.93,0.72)*acc*uAmt*0.6; gl_FragColor=vec4(clamp(col,0.0,1.0),1.0); }`;
+ATMO_SHADERS["embers"]=ATMO_PRE+`void main(){ vec2 uv=v_texCoord; vec3 col=texture2D(uImage,uv).rgb; float t=uTime; float e=0.0;
+ for(float k=0.0;k<3.0;k++){ float sc=9.0+k*7.0; vec2 p=vec2(uv.x*sc*(uRes.x/uRes.y), uv.y*sc + t*(0.35+k*0.25)*sc);
+  p.x += sin(p.y*0.5+k*2.0)*0.5; vec2 id=floor(p), f=fract(p); float r=h21(id+k*19.0); float d=length(f-0.5);
+  e += smoothstep(0.22,0.0,d)*step(0.72,r)*(0.5+0.5*sin(t*9.0+r*40.0)); }
+ e *= smoothstep(0.15,1.0,uv.y); col += vec3(1.0,0.5,0.16)*e*uAmt; gl_FragColor=vec4(clamp(col,0.0,1.0),1.0); }`;
+ATMO_SHADERS["fireflies"]=ATMO_PRE+`void main(){ vec2 uv=v_texCoord; vec3 col=texture2D(uImage,uv).rgb; float t=uTime; float g=0.0;
+ for(float k=0.0;k<2.0;k++){ float sc=5.0+k*4.0; vec2 p=vec2(uv.x*sc*(uRes.x/uRes.y), uv.y*sc);
+  vec2 id=floor(p), f=fract(p); float r=h21(id+k*31.0);
+  vec2 ctr=vec2(0.5+0.3*sin(t*0.8+r*6.28), 0.5+0.3*cos(t*0.7+r*4.0)); float d=length(f-ctr);
+  float blink=0.5+0.5*sin(t*3.0+r*20.0); g += smoothstep(0.12,0.0,d)*step(0.75,r)*blink; }
+ col += vec3(0.7,1.0,0.5)*g*uAmt*1.1; gl_FragColor=vec4(clamp(col,0.0,1.0),1.0); }`;
+ATMO_SHADERS["fog"]=ATMO_PRE+`void main(){ vec2 uv=v_texCoord; vec3 col=texture2D(uImage,uv).rgb; float t=uTime; vec2 p=uv*3.0; p.x+=t*0.03;
+ float n=0.0, a=0.5; for(int i=0;i<4;i++){ vec2 ip=floor(p), fp=fract(p); fp=fp*fp*(3.0-2.0*fp);
+  float v=mix(mix(h21(ip),h21(ip+vec2(1.0,0.0)),fp.x), mix(h21(ip+vec2(0.0,1.0)),h21(ip+vec2(1.0,1.0)),fp.x), fp.y); n+=v*a; a*=0.5; p*=2.0; }
+ float fog=smoothstep(0.3,0.9,n)*uAmt*0.5; col=mix(col, vec3(0.8,0.82,0.86), fog); gl_FragColor=vec4(col,1.0); }`;
+var ATMO_NAMES=["snow","rain","golddust","godrays","embers","fireflies","fog"];
+var ATMO_FREQ={cinema:0.30,doux:0.26,dynamique:0.45,voyage:0.55};
+var ATMO_AMT={cinema:0.5,doux:0.45,dynamique:0.8,voyage:0.7};
+var ATMO={ready:false,progs:{},okNames:null,okCount:0,fbo:null};
+var _atmo=null, _atmoAmt=0.6, _atmoBag=[];
+function atmGet(name){ if(!name) return null; if(Object.prototype.hasOwnProperty.call(ATMO.progs,name)) return ATMO.progs[name]; var s=ATMO_SHADERS[name]; if(!s){ ATMO.progs[name]=null; return null; } var p=trProgGT(s); ATMO.progs[name]=p||null; return ATMO.progs[name]; }
+function atmCompileAll(){ if(ATMO.okNames||!gl||!ATMO.ready) return; ATMO.okNames=[]; for(var i=0;i<ATMO_NAMES.length;i++){ if(atmGet(ATMO_NAMES[i])) ATMO.okNames.push(ATMO_NAMES[i]); } if(!ATMO.okNames.length) ATMO.okNames=null; ATMO.okCount=ATMO.okNames?ATMO.okNames.length:0; }
+function atmReset(){ _atmoBag=(ATMO.okNames&&ATMO.okNames.length)?ATMO.okNames.slice():ATMO_NAMES.slice(); }
+function atmoBagPick(want, idx){ if(!_atmoBag.length){ _atmoBag=(ATMO.okNames&&ATMO.okNames.length)?ATMO.okNames.slice():ATMO_NAMES.slice(); } var cand=want.filter(function(n){ return _atmoBag.indexOf(n)>=0; }); if(!cand.length) cand=_atmoBag; var pick=cand[idx%cand.length]; var i=_atmoBag.indexOf(pick); if(i>=0)_atmoBag.splice(i,1); return pick; }
+function atmChoose(idx,sg,mood,energy){
+  if(!ATMO.okNames||!ATMO.okNames.length) return null;
+  var f=(sg.img>=0&&PHOTOS[sg.img]&&PHOTOS[sg.img].feat)||{lum:0.5,warm:0,sat:0.3,detail:0.2,portrait:false};
+  var freq=(ATMO_FREQ[mood]!=null?ATMO_FREQ[mood]:0.35);
+  var seed=(A&&A.beats)?(A.beats.length%53):0;
+  if((((idx+seed)*0.618)%1) > freq) return null;
+  var want;
+  if(f.warm<-0.03 && f.lum>0.42) want=["snow","fog"];
+  else if(f.warm>0.12 && f.lum>0.45) want=["golddust","godrays"];
+  else if(f.warm>0.10 && f.lum<0.42) want=["embers","fireflies"];
+  else if(f.lum<0.30) want=["fireflies","fog"];
+  else if(f.lum>0.72) want=["godrays","golddust"];
+  else want=["golddust","fog","rain"];
+  return atmoBagPick(want, idx+seed);
+}
+function atmRender(prog, srcTex, time){
+  gl.bindFramebuffer(gl.FRAMEBUFFER,ATMO.fbo.fb); gl.viewport(0,0,ATMO.fbo.w,ATMO.fbo.h);
+  gl.useProgram(prog); gl.bindBuffer(gl.ARRAY_BUFFER,TR.quad);
+  var aP=gl.getAttribLocation(prog,"a_position"); gl.enableVertexAttribArray(aP); gl.vertexAttribPointer(aP,2,gl.FLOAT,false,0,0);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,srcTex); var li=gl.getUniformLocation(prog,"uImage"); if(li) gl.uniform1i(li,0);
+  var lt=gl.getUniformLocation(prog,"uTime"); if(lt) gl.uniform1f(lt,time);
+  var lrr=gl.getUniformLocation(prog,"uRes"); if(lrr) gl.uniform2f(lrr,ATMO.fbo.w,ATMO.fbo.h);
+  var la=gl.getUniformLocation(prog,"uAmt"); if(la) gl.uniform1f(la,_atmoAmt);
+  gl.drawArrays(gl.TRIANGLES,0,6); gl.bindFramebuffer(gl.FRAMEBUFFER,null); return ATMO.fbo.tex;
+}
+
 function initGL(){
   var cv=document.getElementById("gl");
   try{ gl=cv.getContext("webgl")||cv.getContext("experimental-webgl"); }catch(e){ gl=null; }
@@ -6303,11 +6379,13 @@ function initGL(){
 }
 function drawGL(time,pulse,srcTex){
   if(!glReady) return; var G=MOODS[MOOD].grade, F=MOODS[MOOD].fx||{};
+  var src=srcTex;
+  if(!src){ gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,glTex); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,base); src=glTex; }
+  if(_atmo && ATMO.ready){ var ap=atmGet(_atmo); if(ap) src=atmRender(ap, src, time); }
   gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.viewport(0,0,base.width,base.height);
   gl.useProgram(glProg);
   gl.bindBuffer(gl.ARRAY_BUFFER,glQuad); var aP=gl.getAttribLocation(glProg,"aPos"); gl.enableVertexAttribArray(aP); gl.vertexAttribPointer(aP,2,gl.FLOAT,false,0,0);
-  gl.activeTexture(gl.TEXTURE0);
-  if(srcTex){ gl.bindTexture(gl.TEXTURE_2D,srcTex); } else { gl.bindTexture(gl.TEXTURE_2D,glTex); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,base); }
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,src);
   var ut=gl.getUniformLocation(glProg,"uTex"); if(ut) gl.uniform1i(ut,0);
   gl.uniform1f(glU.uTime,time); if(glU.uResolution) gl.uniform2f(glU.uResolution,base.width,base.height);
   gl.uniform1f(glU.uGrain,G.grain); gl.uniform1f(glU.uVig,G.vig);
@@ -6349,6 +6427,7 @@ function loop(){
   var TRd=Math.min((sg&&sg.trDur!=null?sg.trDur:0.5),(sg?(sg.end-sg.start)*0.5:0));
   var inTrans=(sg&&prev&&TRd>0&&into<TRd&&trName!=="cut"&&trName!=="none");
   var strongPulse=(sg&&sg.strong&&into<0.10)?(1-into/0.10):0;
+  _atmo=sg?(sg.atmo||null):null; _atmoAmt=(ATMO_AMT[MOOD]!=null?ATMO_AMT[MOOD]:0.6);
   if(glReady && TR.ready && inTrans){
     drawSegAt(prev,prev.end-0.001,0,1); trUpload(TR.texFrom);
     drawSegAt(sg,t,0,1); trUpload(TR.texTo);
@@ -6380,7 +6459,7 @@ function setState(s){ document.getElementById("state").innerHTML=s||""; }
 function updateBadge(){
   var parts=[];
   if(A){ parts.push(A.engine==="essentia"?"Essentia":"maison"); parts.push(A.bpm?(A.bpm+" BPM"):"rég."); if(A.engine==="essentia"&&A.conf) parts.push("conf "+A.conf.toFixed(1)); parts.push((A.beats?A.beats.length:0)+" temps"); }
-  parts.push(PHOTOS.length+" ph"); if(SEGS.length) parts.push(SEGS.length+" plans"); if(TR&&TR.okCount) parts.push(TR.okCount+" trans");
+  parts.push(PHOTOS.length+" ph"); if(SEGS.length) parts.push(SEGS.length+" plans"); if(TR&&TR.okCount) parts.push(TR.okCount+" trans"); if(ATMO&&ATMO.okCount) parts.push(ATMO.okCount+" atmo");
   document.getElementById("badge").textContent=parts.join(" · ");
 }
 document.getElementById("pickMusic").onclick=function(){ ensureAudio(); document.getElementById("fMusic").click(); };
