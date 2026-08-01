@@ -15,9 +15,8 @@
     background:linear-gradient(160deg,#1b3a63 0%,#2f5f86 40%,#c9a06a 75%,#e8c98a 100%);box-shadow:0 10px 30px rgba(0,0,0,.5)}
   .stage .scene{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;padding-bottom:12%}
   .stage .scene b{font:700 22px Georgia,serif;color:rgba(255,255,255,.85);text-shadow:0 2px 8px rgba(0,0,0,.4)}
-  /* canvas direct : c'est ce qui affiche reellement (tsParticles v3 l'accepte) */
-  #tsp{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
-  #fps{position:absolute;top:8px;right:10px;z-index:3;background:rgba(6,12,26,.6);border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:3px 9px;font:600 11px ui-monospace,monospace;color:#dfe7f6}
+  #tsp{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  #tsp canvas{position:absolute!important;inset:0;width:100%!important;height:100%!important;display:block!important}
   .row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
   .btn{flex:1;min-width:46%;border:1px solid #26345c;background:#141d3a;color:#eaf0fb;border-radius:11px;padding:13px;font:600 14px system-ui;cursor:pointer}
   .btn:active{transform:translateY(1px)}
@@ -29,11 +28,10 @@
 <body>
 <div class="wrap">
   <h1>Test particules — tsParticles</h1>
-  <p class="sub">Lot critique appliqué : canvas direct qui affiche, verrou anti-course, destruction propre. + FPS visible.</p>
+  <p class="sub">Bundle complet (tous les effets). Un seul moteur, un seul conteneur détruit proprement à chaque changement.</p>
   <div class="stage">
     <div class="scene"><b>scène test</b></div>
-    <canvas id="tsp"></canvas>
-    <div id="fps">— fps</div>
+    <div id="tsp"></div>
   </div>
   <div class="row">
     <button class="btn" id="snow">❄️ Neige</button>
@@ -47,15 +45,16 @@
     <button class="btn stop" id="stop">■ Tout arrêter</button>
   </div>
   <div id="log">Chargement du moteur…</div>
-  <p class="hint">Enchaîne vite les 4 boutons : plus aucun plantage. Regarde le FPS en haut à droite. Dis-moi effet par effet : réaliste / fluide / stable.</p>
+  <p class="hint">Enchaîne les 4 effets dans tous les sens : ça ne doit plus jamais planter. Dis-moi effet par effet : réaliste et fluide, oui ou non.</p>
 </div>
 <script>
 "use strict";
-var log=document.getElementById("log"), fpsEl=document.getElementById("fps");
+var log=document.getElementById("log");
 function say(s){ log.textContent=s; }
 function ready(){ return (typeof tsParticles!=="undefined" && typeof tsParticles.load==="function"); }
+var cur=null;
+var playVersion=0;
 
-/* ---- Configs ---- */
 var CFG_SNOW={
   fullScreen:{enable:false}, background:{color:"transparent"}, detectRetina:true, fpsLimit:60,
   particles:{
@@ -71,12 +70,11 @@ var CFG_SNOW={
 var CFG_RAIN={
   fullScreen:{enable:false}, background:{color:"transparent"}, detectRetina:true, fpsLimit:60,
   particles:{
-    number:{value:280,density:{enable:true,area:800}},
-    color:{value:"#dcebff"}, shape:{type:"circle"},
-    opacity:{value:{min:0.35,max:0.7}},
-    size:{value:{min:1,max:2.4}},
-    move:{enable:true,direction:"bottom",speed:{min:24,max:34},straight:true,
-      trail:{enable:true,length:9,fill:{color:"transparent"}}}
+    number:{value:200,density:{enable:true,area:800}},
+    color:{value:"#dceaff"}, shape:{type:"square"},
+    opacity:{value:{min:0.45,max:0.9}},
+    size:{value:{min:1,max:2.2}},
+    move:{enable:true,direction:"bottom",speed:{min:18,max:28},straight:true}
   }
 };
 var CFG_CONF={
@@ -84,7 +82,8 @@ var CFG_CONF={
   emitters:{
     life:{count:1,duration:0.12,delay:0},
     rate:{delay:0,quantity:160},
-    position:{x:50,y:50}, size:{width:0,height:0}
+    position:{x:50,y:50},
+    size:{width:0,height:0}
   },
   particles:{
     number:{value:0},
@@ -103,9 +102,9 @@ var CFG_CONF={
 var CFG_FW={
   fullScreen:{enable:false}, background:{color:"transparent"}, detectRetina:true, fpsLimit:60,
   emitters:[
-    {life:{count:0,duration:0.1,delay:0.7}, rate:{delay:0,quantity:80}, position:{x:30,y:28}, size:{width:0,height:0}},
-    {life:{count:0,duration:0.1,delay:1.2}, rate:{delay:0,quantity:80}, position:{x:70,y:20}, size:{width:0,height:0}},
-    {life:{count:0,duration:0.1,delay:1.6}, rate:{delay:0,quantity:80}, position:{x:50,y:36}, size:{width:0,height:0}}
+    {life:{count:0,duration:0.1,delay:0.7}, rate:{delay:0,quantity:70}, position:{x:30,y:30}, size:{width:0,height:0}},
+    {life:{count:0,duration:0.1,delay:1.1}, rate:{delay:0,quantity:70}, position:{x:70,y:22}, size:{width:0,height:0}},
+    {life:{count:0,duration:0.1,delay:1.5}, rate:{delay:0,quantity:70}, position:{x:50,y:38}, size:{width:0,height:0}}
   ],
   particles:{
     number:{value:0},
@@ -114,41 +113,32 @@ var CFG_FW={
     opacity:{value:1,animation:{enable:true,startValue:"max",speed:0.8,destroy:"min"}},
     size:{value:{min:1.5,max:3.5}},
     life:{duration:{sync:false,value:1.8},count:1},
-    move:{enable:true,gravity:{enable:true,acceleration:9},speed:{min:12,max:34},decay:0.04,direction:"none",outModes:{default:"destroy"},
-      trail:{enable:true,length:6,fill:{color:"transparent"}}}
+    move:{enable:true,gravity:{enable:true,acceleration:9},speed:{min:12,max:34},decay:0.04,direction:"none",outModes:{default:"destroy"}},
+    trail:{enable:true,length:6,fill:{color:"transparent"}}
   }
 };
 
-/* ---- (2)(3) verrou anti-course + destruction propre ---- */
-var cur=null, loadSeq=0;
-function killAll(){
-  try{ var arr=tsParticles.dom(); for(var i=arr.length-1;i>=0;i--){ try{ arr[i].destroy(); }catch(e){} } }catch(e){}
-  cur=null;
-}
 async function play(cfg,name){
   if(!ready()){ say("moteur pas prêt…"); return; }
-  var my=++loadSeq;                 /* jeton : identifie CET appel */
-  killAll();                        /* detruit l'instance courante ET toute orpheline */
-  var container;
-  try{ container=await tsParticles.load({ id:"tsp", options:cfg }); }
-  catch(e){ say("échec "+name+" : "+e); return; }
-  if(my!==loadSeq){                 /* un appui plus recent est arrive pendant le chargement */
-    try{ container&&container.destroy(); }catch(e){}
-    return;                         /* on jette cette instance perimee -> une seule reste active */
+  var version=++playVersion;
+  if(cur){ try{ cur.destroy(); }catch(e){ console.warn(e); } cur=null; }
+  var host=document.getElementById("tsp");
+  if(host) host.innerHTML="";
+  try{
+    var c=await tsParticles.load({ id:"tsp", options:cfg });
+    if(version!==playVersion){ try{ c&&c.destroy&&c.destroy(); }catch(e){} return; }
+    cur=c;
+    say(name+" ✔");
+  }catch(e){
+    console.error(e);
+    say("échec "+name+" : "+(e&&e.message?e.message:e));
   }
-  cur=container; say(name+" ✔");
 }
-
 document.getElementById("snow").onclick=function(){ play(CFG_SNOW,"neige"); };
 document.getElementById("rain").onclick=function(){ play(CFG_RAIN,"pluie"); };
 document.getElementById("confetti").onclick=function(){ play(CFG_CONF,"confettis"); };
 document.getElementById("fw").onclick=function(){ play(CFG_FW,"feux d'artifice"); };
-document.getElementById("stop").onclick=function(){ loadSeq++; killAll(); say("arrêté."); };
-
-/* ---- (7) compteur FPS reel ---- */
-var frames=0, lastT=performance.now();
-function fpsLoop(t){ frames++; if(t-lastT>=1000){ fpsEl.textContent=frames+" fps"; frames=0; lastT=t; } requestAnimationFrame(fpsLoop); }
-requestAnimationFrame(fpsLoop);
+document.getElementById("stop").onclick=function(){ playVersion++; if(cur){ try{ cur.destroy(); }catch(e){ console.warn(e); } cur=null; } var host=document.getElementById("tsp"); if(host) host.innerHTML=""; say("arrêté."); };
 
 (function wait(n){
   if(ready()){ say("moteur prêt. Appuie sur un effet."); return; }
