@@ -106,10 +106,10 @@ var essentiaReady=new Promise(function(resolve){
 
 /* ================= Ambiances (hold = nombre entier de temps) ================= */
 var MOODS={
-  cinema:{minSec:2.0, tgtSec:2.8, maxSec:4.0, accent:0.50, grade:{expo:0.02,contrast:0.12,sat:-0.04,temp:0.16,vig:0.36,grain:0.02,leak:0.10}, kb:0.10, punch:0.030, fx:{chromatic:0,bloom:0.10,halation:0.10,anamorphic:0,dust:0,scanlines:0,shutter:0,lensFlare:0}},
-  doux:{minSec:2.6, tgtSec:3.6, maxSec:5.0, accent:0.58, grade:{expo:0.05,contrast:0.02,sat:0.06,temp:0.22,vig:0.20,grain:0.02,leak:0.20}, kb:0.06, punch:0.018, fx:{chromatic:0,bloom:0.18,halation:0.15,anamorphic:0,dust:0,scanlines:0,shutter:0,lensFlare:0}},
-  dynamique:{minSec:1.4, tgtSec:1.9, maxSec:2.8, accent:0.42, grade:{expo:0.03,contrast:0.18,sat:0.14,temp:-0.06,vig:0.26,grain:0.02,leak:0.05}, kb:0.16, punch:0.050, fx:{chromatic:0,bloom:0.10,halation:0.06,anamorphic:0,dust:0,scanlines:0,shutter:0,lensFlare:0}},
-  voyage:{minSec:2.0, tgtSec:2.8, maxSec:4.0, accent:0.50, grade:{expo:0.04,contrast:0.08,sat:0.11,temp:0.10,vig:0.22,grain:0.02,leak:0.13}, kb:0.11, punch:0.032, fx:{chromatic:0,bloom:0.14,halation:0.10,anamorphic:0,dust:0,scanlines:0,shutter:0,lensFlare:0}}
+  cinema:{minSec:2.0, tgtSec:2.8, maxSec:4.0, accent:0.50, grade:{expo:0.02,contrast:0.12,sat:-0.04,temp:0.16,vig:0.36,grain:0.02,leak:0.10}, kb:0.10, punch:0.055, fx:{chromatic:0,bloom:0.10,halation:0.10,anamorphic:0,dust:0,scanlines:0,shutter:0,lensFlare:0}},
+  doux:{minSec:2.6, tgtSec:3.6, maxSec:5.0, accent:0.58, grade:{expo:0.05,contrast:0.02,sat:0.06,temp:0.22,vig:0.20,grain:0.02,leak:0.20}, kb:0.06, punch:0.035, fx:{chromatic:0,bloom:0.18,halation:0.15,anamorphic:0,dust:0,scanlines:0,shutter:0,lensFlare:0}},
+  dynamique:{minSec:1.4, tgtSec:1.9, maxSec:2.8, accent:0.42, grade:{expo:0.03,contrast:0.18,sat:0.14,temp:-0.06,vig:0.26,grain:0.02,leak:0.05}, kb:0.16, punch:0.090, fx:{chromatic:0,bloom:0.10,halation:0.06,anamorphic:0,dust:0,scanlines:0,shutter:0,lensFlare:0}},
+  voyage:{minSec:2.0, tgtSec:2.8, maxSec:4.0, accent:0.50, grade:{expo:0.04,contrast:0.08,sat:0.11,temp:0.10,vig:0.22,grain:0.02,leak:0.13}, kb:0.11, punch:0.060, fx:{chromatic:0,bloom:0.14,halation:0.10,anamorphic:0,dust:0,scanlines:0,shutter:0,lensFlare:0}}
 };
 
 /* ================= Enveloppes (force des temps + énergie) ================= */
@@ -273,9 +273,10 @@ function beatPulse(t){
   while(lo<hi){ var m=(lo+hi)>>1; if(b[m]<t) lo=m+1; else hi=m; }
   var si=lo, best=Math.abs(b[lo]-t);
   if(lo>0){ var d2=Math.abs(b[lo-1]-t); if(d2<best){ best=d2; si=lo-1; } }
-  var W=0.14; if(best>W) return 0;
-  var s=(A.strength&&A.strength[si]!=null)?A.strength[si]:0.5;
-  return s*(1-best/W);
+  var W=0.17; if(best>W) return 0;
+  var s=(A.strength&&A.strength[si]!=null)?A.strength[si]:0.5; s=0.5+0.5*s;
+  var env=1-best/W; env=env*env;
+  return s*env;
 }
 function drawSegAt(sg,t,ox,smul){
   ox=ox||0; smul=smul||1;
@@ -6286,7 +6287,7 @@ var TR_DUR={}; GT_NAMES.forEach(function(n){ TR_DUR[n]=0.5; });
 var TR={ready:false,progs:{},okNames:null,quad:null,texFrom:null,texTo:null,fbo:null};
 function trTex(){ var t=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,t); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR); return t; }
 function trProgGT(fsrc){ var vs=compile(gl,gl.VERTEX_SHADER,GTVS), fs=compile(gl,gl.FRAGMENT_SHADER,fsrc); if(!vs||!fs) return null; var p=gl.createProgram(); gl.attachShader(p,vs); gl.attachShader(p,fs); gl.linkProgram(p); if(!gl.getProgramParameter(p,gl.LINK_STATUS)){ return null; } return p; }
-function trCompileAll(){ if(TR.okNames||!gl||!TR.ready) return; TR.okNames=[]; for(var i=0;i<GT_NAMES.length;i++){ var n=GT_NAMES[i]; if(trGet(n)) TR.okNames.push(n); } if(!TR.okNames.length) TR.okNames=null; }
+function trCompileAll(){ if(TR.okNames||!gl||!TR.ready) return; TR.okNames=[]; for(var i=0;i<GT_NAMES.length;i++){ var n=GT_NAMES[i]; if(trGet(n)) TR.okNames.push(n); } if(!TR.okNames.length) TR.okNames=null; TR.okCount=TR.okNames?TR.okNames.length:0; }
 function trGet(name){ if(!name) return null; if(Object.prototype.hasOwnProperty.call(TR.progs,name)) return TR.progs[name]; var src=GT_SHADERS[name]; if(!src){ TR.progs[name]=null; return null; } var pr=trProgGT(src); TR.progs[name]=pr||null; return TR.progs[name]; }
 function initTransitions(){ TR.ready=false; if(!gl) return;
   try{
@@ -6314,16 +6315,16 @@ function trMix(name,p,sg){
   gl.bindFramebuffer(gl.FRAMEBUFFER,null); return true;
 }
 var FAM={
-  calm:["fade","dissolve","StaticFade","fadecolor","fadegrayscale","colorphase","luma","DefocusBlur","ColourDistance","Dreamy","morph"],
-  burn:["FilmBurn","burn","burn0","undulatingBurnOut","Overexposure","luminance_melt"],
-  drop:["GlitchDisplace","GlitchMemories","StripDatamoshGlitch","parametric_glitch","TVStatic","randomNoisex","Mosaic","AdvancedMosaic","hexagonalize","pixelize","old_tv_lost_signal"],
-  zoom:["CrossZoom","SimpleZoom","SimpleZoomOut","ZoomInCircles","zoomInOut","DirectionalScaled","RotateScaleVanish","rotate_scale_fade","Swirl","pinwheel"],
-  rising:["crosswarp","directionalwarp","LinearBlur","tangentMotionBlur","x_axis_translation","wind","Directional","DreamyZoom"],
-  dir:["directionalwipe","wipeLeft","wipeRight","wipeUp","wipeDown","angular","Slides","splitSlideInHorizontal","splitSlideInVertical","ZoomLeftWipe","ZoomRigthWipe","windowslice"],
-  cont:["CrossZoom","crosswarp","LinearBlur","morph","DefocusBlur","dissolve"],
-  shape:["circle","circleopen","CircleCrop","heart","StarWipe","cannabisleaf","PolkaDotsCurtain","RectangleCrop","Box"],
-  narr:["cube","doorway","BookFlip","Fold","InvertedPageCurl","SimpleFlip","GridFlip","Rolls","swap","BowTieHorizontal","BowTieVertical"],
-  warm:["dissolve","colorphase","fadecolor","ColourDistance","luma","morph","HSVfade"]
+  calm:["BlockDissolve","ColourDistance","Dreamy","EdgeTransition","HSVfade","StaticFade","colorphase","dissolve","fade","fadecolor","luma","multiply_blend"],
+  burn:["FilmBurn","Overexposure","burn","burn0","luminance_melt","undulatingBurnOut"],
+  drop:["AdvancedMosaic","CrazyParametricFun","GlitchDisplace","GlitchMemories","Mosaic","StripDatamoshGlitch","TVStatic","hexagonalize","mosaic_transition","old_tv_lost_signal","parametric_glitch","pixelize","randomNoisex","static_wipe"],
+  zoom:["CrossZoom","DreamyZoom","Radial","Revolve_Left","RotateScaleVanish","SimpleZoom","SimpleZoomOut","Swirl","ZoomInCircles","ZoomLeftWipe","ZoomRigthWipe","kaleidoscope","pinwheel","polar_function","powerKaleido","rotateTransition","rotate_scale_fade","zoomInOut"],
+  rising:["Bounce","ButterflyWaveScrawler","DefocusBlur","LinearBlur","WaterDrop","crosswarp","displacement","morph","ripple","tangentMotionBlur"],
+  dir:["Directional","DirectionalScaled","Drop_Zone_Flicker","HorizontalClose","HorizontalOpen","LeftRight","TopBottom","VerticalClose","VerticalOpen","angular","crosshatch","directional-easing","directionalwarp","directionalwipe","fadegrayscale","flyeye","randomsquares","scale-in","splitSlideInHorizontal","splitSlideInOutHorizontal","splitSlideInOutVertical","splitSlideInVertical","splitSlideOutHorizontal","splitSlideOutVertical","squeeze","wind","wipeDown","wipeLeft","wipeRight","wipeUp","x_axis_translation"],
+  cont:["CrossZoom","crosswarp","LinearBlur","morph","DefocusBlur","dissolve","tangentMotionBlur"],
+  shape:["CircleCrop","PolkaDotsCurtain","Rectangle","RectangleCrop","StarWipe","TilesWave","cannabisleaf","chessboard","circle","circleopen","coord-from-in","fragment","heart","perlin","squareswire","windowslice"],
+  narr:["BookFlip","BowTieHorizontal","BowTieVertical","BowTieWithParameter","Box","DoomScreenTransition","Fold","GridFlip","InvertedPageCurl","PuzzleRight","Rolls","SimpleFlip","Slides","StereoViewer","cube","doorway","swap","windowblinds"],
+  warm:["dissolve","colorphase","fadecolor","ColourDistance","luma","morph","HSVfade","multiply_blend"]
 };
 function pickFam(fam, idx, avoid){
   var pool=(TR.okNames&&TR.okNames.length)? fam.filter(function(n){ return TR.okNames.indexOf(n)>=0; }) : fam.slice();
@@ -6332,6 +6333,7 @@ function pickFam(fam, idx, avoid){
   return cand[idx%cand.length];
 }
 function gtChoose(idx,sg,prev,photos,energy,mood){
+  var seed=(A&&A.beats)?(A.beats.length%97):0; idx=idx+seed;
   var neutral={lum:0.5,warm:0,sat:0.3,detail:0.2,portrait:false};
   var A=(prev&&photos[prev.img]&&photos[prev.img].feat)||neutral;
   var B=(photos[sg.img]&&photos[sg.img].feat)||neutral;
@@ -6426,10 +6428,10 @@ function loop(){
     drawSegAt(prev,prev.end-0.001,0,1); trUpload(TR.texFrom);
     drawSegAt(sg,t,0,1); trUpload(TR.texTo);
     trMix(trName,into/TRd,sg);
-    drawGL(t,strongPulse,TR.fbo.tex);
+    drawGL(t,Math.max(strongPulse,beatPulse(t)*0.6),TR.fbo.tex);
   } else {
     var r=renderBaseFrame(t);
-    if(glReady) drawGL(t,r.strongPulse);
+    if(glReady) drawGL(t,Math.max(r.strongPulse,beatPulse(t)*0.6));
   }
   paintStrip(t);
   raf=requestAnimationFrame(loop);
@@ -6453,7 +6455,7 @@ function setState(s){ document.getElementById("state").innerHTML=s||""; }
 function updateBadge(){
   var parts=[];
   if(A){ parts.push(A.engine==="essentia"?"Essentia":"maison"); parts.push(A.bpm?(A.bpm+" BPM"):"rég."); if(A.engine==="essentia"&&A.conf) parts.push("conf "+A.conf.toFixed(1)); parts.push((A.beats?A.beats.length:0)+" temps"); }
-  parts.push(PHOTOS.length+" ph"); if(SEGS.length) parts.push(SEGS.length+" plans");
+  parts.push(PHOTOS.length+" ph"); if(SEGS.length) parts.push(SEGS.length+" plans"); if(TR&&TR.okCount) parts.push(TR.okCount+" trans");
   document.getElementById("badge").textContent=parts.join(" · ");
 }
 document.getElementById("pickMusic").onclick=function(){ ensureAudio(); document.getElementById("fMusic").click(); };
