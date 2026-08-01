@@ -246,18 +246,8 @@ function buildPartition(){
     sg.kbDir=(idx%2===0)?1:-1; sg.slideDir=(idx%2===0)?1:-1;
     sg.move=MOVES[idx%MOVES.length];
     if(idx===0){ sg.trans="none"; return; }
-    var e=energyAt(sg.start), strong=sg.strong;
-    var curL=(PHOTOS[sg.img]&&PHOTOS[sg.img].lum!=null)?PHOTOS[sg.img].lum:0.5;
-    var pImg=SEGS[idx-1].img, prevL=(pImg>=0&&PHOTOS[pImg]&&PHOTOS[pImg].lum!=null)?PHOTOS[pImg].lum:0.5;
-    var dL=Math.abs(curL-prevL), tr;
-    if(e<0.28) tr="crossfade";                                     /* calme -> fondu */
-    else if(strong && dL>0.30) tr="flash";                         /* saut de lumiere -> flash */
-    else if(strong && e>0.75) tr="glitch";                         /* drop -> glitch */
-    else if(strong) tr=(idx%4===0)?"zoomblur":(idx%3===0?"filmburn":"cut");
-    else if(e>0.55) tr=(idx%2===0)?"slide":"dispersion";
-    else tr=(idx%3===0)?"radialwipe":"crossfade";
-    if(idx>1 && SEGS[idx-1].trans===tr && tr!=="cut" && tr!=="crossfade"){ var alts=["slide","zoomblur","radialwipe","lenswipe","noisereveal"]; tr=alts[idx%alts.length]; }
-    sg.trans=tr;
+    sg._prev=SEGS[idx-1];
+    sg.trans=gtChoose(idx,sg,SEGS[idx-1],PHOTOS,energyAt(sg.start),MOOD);
   });
 }
 
@@ -475,267 +465,839 @@ void main(){
   gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
 }`;
 function compile(g,type,src){ var s=g.createShader(type); g.shaderSource(s,src); g.compileShader(s); if(!g.getShaderParameter(s,g.COMPILE_STATUS)){ console.warn(g.getShaderInfoLog(s)); return null; } return s; }
-/* ==== Transitions GPU : shaders valides de la lib + cablage maison robuste (FBO) ==== */
+/* ==== Transitions GPU : shaders gl-transitions (standard communautaire) + pipeline maison ==== */
 var glQuad=null;
-var VS_T="attribute vec2 aPos;varying vec2 vUv;void main(){vUv=(aPos+1.0)*0.5;gl_Position=vec4(aPos,0.0,1.0);}";
-var FS_CROSSFADE = `
+var GTVS = `
+attribute vec2 a_position;
+varying vec2 v_texCoord;
+void main() {
+  v_texCoord = vec2((a_position.x + 1.0) * 0.5, (a_position.y + 1.0) * 0.5);
+  gl_Position = vec4(a_position, 0.0, 1.0);
+}`;
+var GT_SHADERS={};
+var GT_PARAMS={};
+GT_SHADERS["fade"]=`
 precision mediump float;
-varying vec2 vUv;
-uniform sampler2D uFrom, uTo;
-uniform float uProgress;
-uniform float uPower; // 1.0 = linéaire, 2.0 = ease-in-out
-void main(){
-  float p = uProgress;
-  if(uPower > 1.0){
-    p = p < 0.5 ? pow(p*2.0, uPower)*0.5 : 1.0 - pow((1.0-p)*2.0, uPower)*0.5;
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+
+
+vec4 transition(vec2 uv) {
+  return mix(texture2D(from, uv), texture2D(to, uv), progress);
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
+}`;
+GT_PARAMS["fade"]={};
+GT_SHADERS["crosszoom"]=`
+precision mediump float;
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+uniform float strength;
+
+
+uniform float strength;
+vec2 zoom(vec2 uv, float amount) {
+  return 0.5 + ((uv - 0.5) * (1.0 - amount));
+}
+vec4 transition(vec2 uv) {
+  vec4 cf = texture2D(from, zoom(uv, smoothstep(0.0, 1.0, progress) * strength));
+  vec4 ct = texture2D(to, zoom(uv, smoothstep(1.0, 0.0, progress) * strength));
+  return mix(cf, ct, progress);
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
+}`;
+GT_PARAMS["crosszoom"]={"strength":0.4};
+GT_SHADERS["dreamy"]=`
+precision mediump float;
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+uniform float rotation;
+uniform float scale;
+
+
+uniform float rotation;
+uniform float scale;
+vec2 rotate(vec2 v, float a) {
+  float s = sin(a); float c = cos(a);
+  mat2 m = mat2(c, -s, s, c);
+  return m * v;
+}
+vec4 transition(vec2 uv) {
+  vec2 p = uv - 0.5;
+  vec4 a = texture2D(from, uv + rotate(p, rotation * progress) * scale * progress);
+  vec4 b = texture2D(to, uv + rotate(p, rotation * (1.0 - progress)) * scale * (1.0 - progress));
+  return mix(a, b, progress);
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
+}`;
+GT_PARAMS["dreamy"]={"rotation":6,"scale":1.2};
+GT_SHADERS["ripple"]=`
+precision mediump float;
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+uniform float amplitude;
+uniform float speed;
+
+
+uniform float amplitude;
+uniform float speed;
+vec4 transition(vec2 uv) {
+  vec2 dir = uv - vec2(0.5);
+  float dist = length(dir);
+  vec2 offset = dir * (sin(progress * dist * amplitude - progress * speed) + 0.5) * 0.03;
+  return mix(texture2D(from, uv + offset), texture2D(to, uv), smoothstep(0.2, 1.0, progress));
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
+}`;
+GT_PARAMS["ripple"]={"amplitude":100,"speed":50};
+GT_SHADERS["burned"]=`
+precision mediump float;
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+
+
+float rand(vec2 co) {
+  return fract(sin(dot(co.xy, vec2(12.9898,78.233))) * 43758.5453);
+}
+vec4 transition(vec2 uv) {
+  float noise = rand(uv * vec2(1.0, 100.0) + progress);
+  float t = progress * (1.0 + noise * 0.5);
+  vec4 a = texture2D(from, uv);
+  vec4 b = texture2D(to, uv);
+  float m = smoothstep(t - 0.1, t + 0.1, uv.x + noise * 0.1);
+  vec3 orange = vec3(1.0, 0.4, 0.1);
+  vec3 col = mix(a.rgb, mix(orange, b.rgb, smoothstep(t-0.05, t+0.05, uv.x)), m);
+  col += orange * (1.0 - abs(m - 0.5) * 2.0) * 0.3;
+  return vec4(col, 1.0);
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
+}`;
+GT_PARAMS["burned"]={};
+GT_SHADERS["wind"]=`
+precision mediump float;
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+uniform float size;
+
+
+uniform float size;
+float rand(vec2 co) {
+  return fract(sin(dot(co.xy, vec2(12.9898,78.233))) * 43758.5453);
+}
+vec4 transition(vec2 uv) {
+  float r = rand(vec2(0.0, uv.y));
+  float m = smoothstep(0.0, 1.0, (progress * (1.0 + size) - size * r));
+  return mix(texture2D(from, uv), texture2D(to, uv), m);
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
+}`;
+GT_PARAMS["wind"]={"size":0.2};
+GT_SHADERS["pixelize"]=`
+precision mediump float;
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+uniform float squaresMin;
+
+
+uniform float squaresMin;
+float d = min(progress, 1.0 - progress);
+float dist = progress;
+float squareSize = squaresMin + d * d * (resolution.x / squaresMin);
+vec2 square = squareSize * floor(uv * resolution / squareSize) / resolution + squareSize / (2.0 * resolution);
+vec4 transition(vec2 uv) {
+  return mix(texture2D(from, square), texture2D(to, square), dist);
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
+}`;
+GT_PARAMS["pixelize"]={"squaresMin":20};
+GT_SHADERS["circleopen"]=`
+precision mediump float;
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+uniform float smoothness;
+uniform bool opening;
+
+
+uniform float smoothness;
+uniform bool opening;
+const vec2 center = vec2(0.5, 0.5);
+const float SQRT_2 = 1.414213562373;
+vec4 transition(vec2 uv) {
+  float x = opening ? progress : 1.0 - progress;
+  float m = smoothstep(-smoothness, 0.0, SQRT_2 * distance(center, uv) - x * (1.0 + smoothness));
+  return mix(texture2D(from, uv), texture2D(to, uv), opening ? 1.0 - m : m);
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
+}`;
+GT_PARAMS["circleopen"]={"smoothness":0.3,"opening":true};
+GT_SHADERS["directionalwipe"]=`
+precision mediump float;
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+uniform vec2 direction;
+uniform float smoothness;
+
+
+uniform vec2 direction;
+uniform float smoothness;
+vec4 transition(vec2 uv) {
+  vec2 v = normalize(direction);
+  float d = v.x * uv.x + v.y * uv.y;
+  float m = smoothstep(-smoothness, 0.0, d - progress * (1.0 + smoothness));
+  return mix(texture2D(from, uv), texture2D(to, uv), m);
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
+}`;
+GT_PARAMS["directionalwipe"]={"direction":[1,-1],"smoothness":0.5};
+GT_SHADERS["cube"]=`
+precision mediump float;
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+uniform float persp;
+uniform float unzoom;
+uniform float reflection;
+uniform float floating;
+
+
+uniform float persp;
+uniform float unzoom;
+uniform float reflection;
+uniform float floating;
+vec2 project(vec2 p) {
+  return p * vec2(1.0, -1.2) + vec2(0.0, -floating/100.0);
+}
+bool inBounds(vec2 p) {
+  return all(lessThan(vec2(0.0), p)) && all(lessThan(p, vec2(1.0)));
+}
+vec4 bgColor(vec2 p, vec2 pfr, vec2 pto) {
+  vec4 c = vec4(0.0, 0.0, 0.0, 1.0);
+  pfr = project(pfr);
+  if (inBounds(pfr)) c += mix(vec4(0.0), texture2D(from, pfr), reflection * mix(1.0, 0.0, pfr.y));
+  pto = project(pto);
+  if (inBounds(pto)) c += mix(vec4(0.0), texture2D(to, pto), reflection * mix(1.0, 0.0, pto.y));
+  return c;
+}
+vec4 transition(vec2 uv) {
+  float pr = smoothstep(0.0, 1.0, progress);
+  float s = pow(2.0 * abs(pr - 0.5), 3.0);
+  vec2 pfr = vec2(-1.0, -1.0), pto = vec2(-1.0, -1.0);
+  float uz = unzoom * 2.0 * (0.5 - abs(pr - 0.5));
+  if (progress < 0.5) {
+    pfr = (uv - 0.5) * mix(1.0, persp, s) + 0.5;
+    pto = (uv - 0.5) * mix(1.0, persp, s) + 0.5 + vec2(pr * 2.0 - 1.0, 0.0);
+  } else {
+    pfr = (uv - 0.5) * mix(1.0, persp, s) + 0.5 + vec2((pr - 1.0) * 2.0, 0.0);
+    pto = (uv - 0.5) * mix(1.0, persp, s) + 0.5;
   }
-  vec3 a = texture2D(uFrom, vUv).rgb;
-  vec3 b = texture2D(uTo, vUv).rgb;
-  gl_FragColor = vec4(mix(a, b, p), 1.0);
+  pfr = (pfr - 0.5) / (1.0 - uz) + 0.5;
+  pto = (pto - 0.5) / (1.0 - uz) + 0.5;
+  if (progress < 0.5) return mix(texture2D(from, pfr), bgColor(uv, pfr, pto), pr * 2.0);
+  else return mix(bgColor(uv, pfr, pto), texture2D(to, pto), (pr - 0.5) * 2.0);
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
 }`;
-var FS_FLASH = `
+GT_PARAMS["cube"]={"persp":0.7,"unzoom":0.3,"reflection":0.4,"floating":3};
+GT_SHADERS["doorway"]=`
 precision mediump float;
-varying vec2 vUv;
-uniform sampler2D uFrom, uTo;
-uniform float uProgress;
-void main(){
-  vec3 a = texture2D(uFrom, vUv).rgb;
-  vec3 b = texture2D(uTo, vUv).rgb;
-  float flash = 1.0 - abs(uProgress - 0.5) * 2.0; // pic au milieu
-  flash = pow(flash, 0.6);
-  vec3 col = mix(a, b, smoothstep(0.35, 0.65, uProgress));
-  col += vec3(1.0, 0.95, 0.85) * flash * 0.55;
-  gl_FragColor = vec4(col, 1.0);
-}`;
-var FS_SLIDE = `
-precision mediump float;
-varying vec2 vUv;
-uniform sampler2D uFrom, uTo;
-uniform float uProgress;
-uniform float uDirX, uDirY; // -1,0,1
-uniform float uMotionBlur;  // 0..1 intensité
-void main(){
-  vec2 dir = vec2(uDirX, uDirY);
-  float p = uProgress;
-  vec2 off = dir * p;
-  vec2 offPrev = dir * (p - 1.0);
-  vec3 a = texture2D(uFrom, vUv - offPrev).rgb;
-  vec3 b = texture2D(uTo, vUv - off).rgb;
-  // motion blur sur le bord entrant
-  float edge = 1.0 - smoothstep(0.0, 0.15, abs(dot(vUv - 0.5, dir)));
-  float mb = edge * uMotionBlur * 0.06;
-  vec3 blur = vec3(0.0);
-  for(float i=-3.0;i<=3.0;i+=1.0){
-    blur += texture2D(uTo, vUv - off + dir * i * mb).rgb;
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+uniform float reflection;
+uniform float perspective;
+uniform float depth;
+
+
+uniform float reflection;
+uniform float perspective;
+uniform float depth;
+const vec4 black = vec4(0.0, 0.0, 0.0, 1.0);
+vec2 project(vec2 p) {
+  return p * vec2(1.0, -1.2) + vec2(0.0, -0.02);
+}
+bool inBounds(vec2 p) {
+  return all(lessThan(vec2(0.0), p)) && all(lessThan(p, vec2(1.0)));
+}
+vec4 bgColor(vec2 p, vec2 pfr, vec2 pto) {
+  vec4 c = black;
+  pfr = project(pfr);
+  if (inBounds(pfr)) c += mix(black, texture2D(from, pfr), reflection * mix(1.0, 0.0, pfr.y));
+  pto = project(pto);
+  if (inBounds(pto)) c += mix(black, texture2D(to, pto), reflection * mix(1.0, 0.0, pto.y));
+  return c;
+}
+vec4 transition(vec2 uv) {
+  float pr = smoothstep(0.0, 1.0, progress);
+  vec2 pfr = vec2(-1.0), pto = vec2(-1.0);
+  float middleSlit = 2.0 * abs(uv.x - 0.5) - pr;
+  if (middleSlit < 0.0) {
+    pfr = vec2(uv.x + 0.5 * pr, uv.y);
+    pto = vec2(uv.x - 0.5 * (1.0 - pr), uv.y);
+  } else {
+    pfr = vec2(uv.x + (0.5 + 0.5 * perspective) * pr, uv.y + (perspective * pr) * (0.5 - uv.y));
+    pto = vec2(uv.x - (0.5 + 0.5 * perspective) * (1.0 - pr), uv.y + (perspective * (1.0 - pr)) * (0.5 - uv.y));
   }
-  blur /= 7.0;
-  float m = smoothstep(0.0, 0.25, p);
-  vec3 col = mix(a, blur, m);
-  col = mix(col, b, smoothstep(0.2, 0.8, p));
-  gl_FragColor = vec4(col, 1.0);
+  pfr = (pfr - 0.5) / (1.0 + depth * pr) + 0.5;
+  pto = (pto - 0.5) / (1.0 + depth * (1.0 - pr)) + 0.5;
+  if (middleSlit < 0.0) return mix(texture2D(from, pfr), texture2D(to, pto), pr);
+  else return bgColor(uv, pfr, pto);
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
 }`;
-var FS_ZOOMBLUR = `
+GT_PARAMS["doorway"]={"reflection":0.4,"perspective":0.4,"depth":3};
+GT_SHADERS["waterdrop"]=`
 precision mediump float;
-varying vec2 vUv;
-uniform sampler2D uFrom, uTo;
-uniform float uProgress;
-uniform float uCenterX, uCenterY;
-void main(){
-  vec2 c = vec2(uCenterX, uCenterY);
-  vec2 d = vUv - c;
-  float p = uProgress;
-  float inv = 1.0 - p;
-  // zoom out from + blur
-  vec3 a = vec3(0.0); float aw = 0.0;
-  for(float i=0.0;i<8.0;i++){
-    float z = 1.0 + i * 0.04 * inv;
-    float w = 1.0 - i/8.0;
-    a += texture2D(uFrom, c + d * z).rgb * w;
-    aw += w;
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+uniform float amplitude;
+uniform float speed;
+
+
+uniform float amplitude;
+uniform float speed;
+vec4 transition(vec2 uv) {
+  vec2 p = uv - 0.5;
+  float d = length(p);
+  float t = progress;
+  vec2 dir = p / d;
+  float ripple = sin(d * amplitude - t * speed) * 0.02 * (1.0 - t);
+  vec2 offset = p + dir * ripple;
+  vec4 a = texture2D(from, uv + offset * t);
+  vec4 b = texture2D(to, uv + offset * (1.0 - t));
+  return mix(a, b, smoothstep(0.2, 0.8, t));
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
+}`;
+GT_PARAMS["waterdrop"]={"amplitude":30,"speed":20};
+GT_SHADERS["mosaic"]=`
+precision mediump float;
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+uniform float endx;
+uniform float endy;
+
+
+uniform float endx;
+uniform float endy;
+vec2 floor(vec2 p, float size) {
+  return floor(p / size) * size;
+}
+vec4 transition(vec2 uv) {
+  float t = progress;
+  float total = resolution.x + resolution.y;
+  float s = floor(t * total);
+  vec2 p = floor(uv * resolution, s) / resolution;
+  vec4 fromColor = texture2D(from, p);
+  vec4 toColor = texture2D(to, p);
+  return mix(fromColor, toColor, step(0.5, t));
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
+}`;
+GT_PARAMS["mosaic"]={"endx":2,"endy":-1};
+GT_SHADERS["dissolve"]=`
+precision mediump float;
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+
+
+float rand(vec2 co) {
+  return fract(sin(dot(co.xy, vec2(12.9898,78.233))) * 43758.5453);
+}
+vec4 transition(vec2 uv) {
+  float r = rand(uv);
+  float m = smoothstep(0.0, -0.2, r - (progress * (1.0 + 0.2)));
+  return mix(texture2D(from, uv), texture2D(to, uv), m);
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
+}`;
+GT_PARAMS["dissolve"]={};
+GT_SHADERS["glitch_displace"]=`
+precision mediump float;
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+uniform float dispMax;
+
+
+uniform float dispMax;
+float rand(vec2 co) {
+  return fract(sin(dot(co.xy, vec2(12.9898,78.233))) * 43758.5453);
+}
+vec4 transition(vec2 uv) {
+  float t = progress;
+  vec2 block = floor(uv * vec2(20.0, 10.0));
+  vec2 uv_noise = block / vec2(64.0);
+  uv_noise += floor(vec2(t) * vec2(1200.0, 3500.0)) / vec2(64.0);
+  float block_thresh = pow(fract(rand(uv_noise) * 2.0), 2.0) * t * 2.0;
+  float line_thresh = pow(fract(rand(uv_noise * 2.0) * 2.0), 3.0) * t * 3.0;
+  vec2 uv_r = uv, uv_g = uv, uv_b = uv;
+  if (rand(vec2(7.0, 9.0) * block) < block_thresh || rand(vec2(11.0 * t, 7.0)) < line_thresh) {
+    vec2 dist = (fract(rand(uv_noise) * 2.0) - 0.5) * dispMax;
+    uv_r += dist * (t - 0.5);
+    uv_g += dist * (t - 0.5);
+    uv_b += dist * (t - 0.5);
   }
-  a /= aw;
-  // zoom in to
-  vec3 b = vec3(0.0); float bw = 0.0;
-  for(float i=0.0;i<8.0;i++){
-    float z = 1.0 + (7.0-i) * 0.04 * p;
-    float w = 1.0 - i/8.0;
-    b += texture2D(uTo, c + d * z).rgb * w;
-    bw += w;
+  return vec4(
+    texture2D(from, uv_r).r * (1.0 - t) + texture2D(to, uv_r).r * t,
+    texture2D(from, uv_g).g * (1.0 - t) + texture2D(to, uv_g).g * t,
+    texture2D(from, uv_b).b * (1.0 - t) + texture2D(to, uv_b).b * t,
+    1.0
+  );
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
+}`;
+GT_PARAMS["glitch_displace"]={"dispMax":0.5};
+GT_SHADERS["simplezoom"]=`
+precision mediump float;
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+uniform float zoom_quickness;
+
+
+uniform float zoom_quickness;
+float nQuick = clamp(zoom_quickness, 0.2, 1.0);
+vec2 zoom(vec2 uv, float amount) {
+  return 0.5 + ((uv - 0.5) * (1.0 - amount));
+}
+vec4 transition(vec2 uv) {
+  float t = progress;
+  float s = pow(2.0 * abs(t - 0.5), nQuick);
+  vec4 a = texture2D(from, zoom(uv, smoothstep(0.0, 1.0, t) * s));
+  vec4 b = texture2D(to, zoom(uv, smoothstep(1.0, 0.0, t) * s));
+  return mix(a, b, t);
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
+}`;
+GT_PARAMS["simplezoom"]={"zoom_quickness":0.8};
+GT_SHADERS["angular"]=`
+precision mediump float;
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+uniform float startingAngle;
+
+
+uniform float startingAngle;
+const float PI = 3.141592653589793;
+float check(vec2 p1, vec2 p2, vec2 p3) {
+  return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
+}
+bool PointInTriangle(vec2 pt, vec2 p1, vec2 p2, vec2 p3) {
+  bool b1 = check(pt, p1, p2) < 0.0;
+  bool b2 = check(pt, p2, p3) < 0.0;
+  bool b3 = check(pt, p3, p1) < 0.0;
+  return ((b1 == b2) && (b2 == b3));
+}
+bool in_left_triangle(vec2 uv, float t) {
+  vec2 lt = vec2(0.5 - t, 0.5);
+  vec2 rb = vec2(0.5, 0.5 - t);
+  vec2 lb = vec2(0.5 - t, 0.5 - t);
+  return PointInTriangle(uv, lt, rb, lb);
+}
+vec4 transition(vec2 uv) {
+  float t = progress;
+  float a = startingAngle * PI / 180.0;
+  vec2 iuv = (uv - 0.5) * mat2(cos(a), -sin(a), sin(a), cos(a)) + 0.5;
+  if (in_left_triangle(iuv, t)) return texture2D(to, uv);
+  if (in_left_triangle(iuv, 1.0 - t)) return texture2D(from, uv);
+  return mix(texture2D(from, uv), texture2D(to, uv), t);
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
+}`;
+GT_PARAMS["angular"]={"startingAngle":90};
+GT_SHADERS["squeeze"]=`
+precision mediump float;
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+uniform float colorSeparation;
+
+
+uniform float colorSeparation;
+vec4 transition(vec2 uv) {
+  float y = 0.5 + (uv.y - 0.5) / (1.0 - progress);
+  if (y < 0.0 || y > 1.0) return texture2D(to, uv);
+  float x = uv.x;
+  float dist = sqrt((x - 0.5) * (x - 0.5) + (y - 0.5) * (y - 0.5));
+  float r = x - 0.5;
+  float d = progress * colorSeparation;
+  float cr = mix(x, 0.5 + r * (dist + d) / dist, progress);
+  float cb = mix(x, 0.5 + r * (dist - d) / dist, progress);
+  vec4 fragFrom = vec4(texture2D(from, vec2(cr, y)).r, texture2D(from, vec2(x, y)).g, texture2D(from, vec2(cb, y)).b, 1.0);
+  vec4 fragTo = texture2D(to, uv);
+  return mix(fragFrom, fragTo, progress);
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
+}`;
+GT_PARAMS["squeeze"]={"colorSeparation":0.04};
+GT_SHADERS["linearblur"]=`
+precision mediump float;
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+uniform float intensity;
+
+
+uniform float intensity;
+vec4 transition(vec2 uv) {
+  vec4 c = vec4(0.0);
+  float disp = intensity * (0.5 - distance(0.5, progress));
+  int k = 10;
+  for (int i = 0; i < k; i++) {
+    float d = float(i) / float(k - 1);
+    c += mix(texture2D(from, uv + vec2(disp, 0.0) * d), texture2D(to, uv + vec2(-disp, 0.0) * (1.0 - d)), progress);
   }
-  b /= bw;
-  gl_FragColor = vec4(mix(a, b, smoothstep(0.25, 0.75, p)), 1.0);
+  return c / float(k);
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
 }`;
-var FS_FILMBURN = `
+GT_PARAMS["linearblur"]={"intensity":0.5};
+GT_SHADERS["kaleidoscope"]=`
 precision mediump float;
-varying vec2 vUv;
-uniform sampler2D uFrom, uTo;
-uniform float uProgress;
-float rand(vec2 c){ return fract(sin(dot(c,vec2(12.9898,78.233)))*43758.5453); }
-void main(){
-  float p = uProgress;
-  float burn = smoothstep(0.15, 0.55, p) * (1.0 - smoothstep(0.55, 0.95, p));
-  burn = pow(burn, 0.5);
-  vec3 orange = vec3(1.0, 0.45, 0.12);
-  float n = rand(vUv * vec2(1.0, 300.0) + p) * 0.15;
-  vec3 a = texture2D(uFrom, vUv).rgb;
-  vec3 b = texture2D(uTo, vUv).rgb;
-  float m = smoothstep(0.25, 0.75, p);
-  vec3 col = mix(a, b, m);
-  col = mix(col, orange + n, burn * 0.7);
-  col += vec3(1.0, 0.8, 0.5) * burn * 0.25;
-  gl_FragColor = vec4(col, 1.0);
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+uniform float speed;
+uniform float angle;
+uniform float power;
+
+
+uniform float speed;
+uniform float angle;
+uniform float power;
+vec4 transition(vec2 uv) {
+  float t = progress;
+  vec2 p = uv - 0.5;
+  float a = atan(p.y, p.x);
+  float r = length(p);
+  float sides = 6.0 + (1.0 - t) * 2.0;
+  a = mod(a, 2.0 * 3.14159 / sides);
+  a = abs(a - 3.14159 / sides);
+  p = r * vec2(cos(a), sin(a));
+  vec4 fromColor = texture2D(from, p + 0.5);
+  vec4 toColor = texture2D(to, p + 0.5);
+  return mix(fromColor, toColor, t);
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
 }`;
-var FS_GLITCH = `
+GT_PARAMS["kaleidoscope"]={"speed":1,"angle":1,"power":1.5};
+GT_SHADERS["flyeye"]=`
 precision mediump float;
-varying vec2 vUv;
-uniform sampler2D uFrom, uTo;
-uniform float uProgress;
-uniform float uSeed;
-float rand(vec2 c){ return fract(sin(dot(c,vec2(12.9898,78.233)))*43758.5453); }
-void main(){
-  float p = uProgress;
-  float intensity = (1.0 - abs(p - 0.5)*2.0);
-  intensity = pow(intensity, 0.4);
-  float seed = uSeed;
-  vec2 uv = vUv;
-  // block displacement
-  float block = rand(vec2(floor(uv.y*20.0), floor(seed)));
-  float shift = (rand(vec2(block, seed+1.0)) - 0.5) * intensity * 0.12;
-  uv.x += shift;
-  // rgb split
-  float split = intensity * 0.008;
-  vec3 a; a.r=texture2D(uFrom, uv+vec2(split,0.0)).r; a.g=texture2D(uFrom, uv).g; a.b=texture2D(uFrom, uv-vec2(split,0.0)).b;
-  vec3 b; b.r=texture2D(uTo,   uv+vec2(split,0.0)).r; b.g=texture2D(uTo,   uv).g; b.b=texture2D(uTo,   uv-vec2(split,0.0)).b;
-  // scanline darkening during glitch
-  float scan = sin(uv.y * 800.0) * 0.04 * intensity;
-  float m = smoothstep(0.3, 0.7, p);
-  vec3 col = mix(a, b, m) - scan;
-  gl_FragColor = vec4(col, 1.0);
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+uniform float size;
+uniform float zoom;
+uniform float colorSeparation;
+
+
+uniform float size;
+uniform float zoom;
+uniform float colorSeparation;
+vec4 transition(vec2 uv) {
+  float inv = 1.0 - progress;
+  vec2 disp = size * vec2(cos(zoom * uv.x), sin(zoom * uv.y));
+  vec4 texTo = texture2D(to, uv + inv * disp);
+  vec4 texFrom = vec4(
+    texture2D(from, uv + progress * disp * (1.0 - colorSeparation)).r,
+    texture2D(from, uv + progress * disp).g,
+    texture2D(from, uv + progress * disp * (1.0 + colorSeparation)).b,
+    1.0
+  );
+  return texTo * progress + texFrom * inv;
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
 }`;
-var FS_RADIALWIPE = `
+GT_PARAMS["flyeye"]={"size":0.04,"zoom":50,"colorSeparation":0.3};
+GT_SHADERS["randomsquares"]=`
 precision mediump float;
-varying vec2 vUv;
-uniform sampler2D uFrom, uTo;
-uniform float uProgress;
-uniform float uClockwise; // 1.0 ou -1.0
-void main(){
-  vec2 d = vUv - 0.5;
-  float angle = atan(d.y, d.x) / 6.28318530718; // -0.5..0.5
-  angle = fract(angle + 0.5);
-  float p = uProgress;
-  float edge = smoothstep(p-0.05, p+0.05, angle);
-  // feather
-  float feather = smoothstep(p-0.12, p-0.02, angle) - smoothstep(p+0.02, p+0.12, angle);
-  vec3 a = texture2D(uFrom, vUv).rgb;
-  vec3 b = texture2D(uTo, vUv).rgb;
-  vec3 col = mix(a, b, edge);
-  col += vec3(1.0, 0.9, 0.7) * feather * 0.25;
-  gl_FragColor = vec4(col, 1.0);
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+uniform vec2 size;
+uniform float smoothness;
+
+
+uniform vec2 size;
+uniform float smoothness;
+float rand(vec2 co) {
+  return fract(sin(dot(co.xy, vec2(12.9898,78.233))) * 43758.5453);
+}
+vec4 transition(vec2 uv) {
+  float r = rand(floor(vec2(size) * uv));
+  float m = smoothstep(0.0, -smoothness, r - (progress * (1.0 + smoothness)));
+  return mix(texture2D(from, uv), texture2D(to, uv), m);
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
 }`;
-var FS_DISPERSION = `
+GT_PARAMS["randomsquares"]={"size":[10,10],"smoothness":0.5};
+GT_SHADERS["bowtie"]=`
 precision mediump float;
-varying vec2 vUv;
-uniform sampler2D uFrom, uTo;
-uniform float uProgress;
-void main(){
-  float p = uProgress;
-  float inv = 1.0 - p;
-  float strength = sin(p * 3.14159265359) * 0.025;
-  vec2 uv = vUv;
-  vec3 a; a.r=texture2D(uFrom, uv+vec2(strength,0.0)*inv).r; a.g=texture2D(uFrom, uv).g; a.b=texture2D(uFrom, uv-vec2(strength,0.0)*inv).b;
-  vec3 b; b.r=texture2D(uTo,   uv-vec2(strength,0.0)*p).r;   b.g=texture2D(uTo,   uv).g; b.b=texture2D(uTo,   uv+vec2(strength,0.0)*p).b;
-  float m = smoothstep(0.25, 0.75, p);
-  gl_FragColor = vec4(mix(a, b, m), 1.0);
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+uniform float direction;
+uniform float colorSeparation;
+
+
+uniform float direction;
+uniform float colorSeparation;
+vec2 offset(float progress, float x, float theta) {
+  float phase = progress * progress + progress + theta;
+  return (direction > 0.0 ? vec2(-1.0, -1.0) : vec2(1.0, 1.0)) * vec2(x, 0.0) * cos(phase);
+}
+vec4 transition(vec2 uv) {
+  float progress1 = progress;
+  vec2 p = uv + offset(progress1, 1.0, 0.0);
+  if (p.x > 0.0 && p.y > 0.0 && p.x < 1.0 && p.y < 1.0) {
+    return vec4(
+      texture2D(from, p + offset(progress1, colorSeparation, 0.0)).r,
+      texture2D(from, p + offset(progress1, 0.0, 0.0)).g,
+      texture2D(from, p + offset(progress1, -colorSeparation, 0.0)).b,
+      1.0
+    );
+  }
+  p = uv + offset(1.0 - progress1, 1.0, 3.14159);
+  if (p.x > 0.0 && p.y > 0.0 && p.x < 1.0 && p.y < 1.0) {
+    return vec4(
+      texture2D(to, p + offset(1.0 - progress1, colorSeparation, 3.14159)).r,
+      texture2D(to, p + offset(1.0 - progress1, 0.0, 3.14159)).g,
+      texture2D(to, p + offset(1.0 - progress1, -colorSeparation, 3.14159)).b,
+      1.0
+    );
+  }
+  return mix(texture2D(from, uv), texture2D(to, uv), progress1);
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
 }`;
-var FS_NOISEREVEAL = `
+GT_PARAMS["bowtie"]={"direction":1,"colorSeparation":0.3};
+GT_SHADERS["crosshatch"]=`
 precision mediump float;
-varying vec2 vUv;
-uniform sampler2D uFrom, uTo;
-uniform float uProgress;
-uniform float uSeed;
-float rand(vec2 c){ return fract(sin(dot(c,vec2(12.9898,78.233)))*43758.5453); }
-void main(){
-  float p = uProgress;
-  float n = rand(vUv * 200.0 + uSeed);
-  float threshold = p * 1.3 - 0.15;
-  float edge = smoothstep(threshold-0.08, threshold+0.08, n);
-  vec3 a = texture2D(uFrom, vUv).rgb;
-  vec3 b = texture2D(uTo, vUv).rgb;
-  // add noise grain during transition
-  float grain = (rand(vUv*800.0+uSeed*2.0)-0.5)*0.08 * sin(p*3.14159);
-  gl_FragColor = vec4(mix(a, b, edge) + grain, 1.0);
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+uniform vec2 center;
+uniform float threshold;
+uniform float fadeEdge;
+
+
+uniform vec2 center;
+uniform float threshold;
+uniform float fadeEdge;
+float rand(vec2 co) {
+  return fract(sin(dot(co.xy, vec2(12.9898,78.233))) * 43758.5453);
+}
+vec4 transition(vec2 uv) {
+  float dist = distance(center, uv) / threshold;
+  float r = progress - min(rand(vec2(uv.y, 0.0)), rand(vec2(0.0, uv.x)));
+  float m = clamp((r - dist) / fadeEdge, 0.0, 1.0);
+  return mix(texture2D(from, uv), texture2D(to, uv), m);
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
 }`;
-var FS_LENSWIPE = `
+GT_PARAMS["crosshatch"]={"center":[0.5,0.5],"threshold":3,"fadeEdge":0.1};
+GT_SHADERS["polar"]=`
 precision mediump float;
-varying vec2 vUv;
-uniform sampler2D uFrom, uTo;
-uniform float uProgress;
-uniform float uAngle; // 0..6.28
-void main(){
-  float p = uProgress;
-  vec2 d = vUv - 0.5;
-  float a = atan(d.y, d.x);
-  float dist = length(d);
-  // lens distortion warp
-  float warp = sin(p*3.14159) * 0.15;
-  float k = 1.0 + warp * dist * dist;
-  vec2 uvA = 0.5 + d * (1.0 - warp * (1.0-p));
-  vec2 uvB = 0.5 + d * (1.0 + warp * p);
-  vec3 aCol = texture2D(uFrom, uvA).rgb;
-  vec3 bCol = texture2D(uTo,   uvB).rgb;
-  // iris wipe
-  float iris = smoothstep(p-0.05, p+0.05, dist * 2.0);
-  float m = smoothstep(0.2, 0.8, p);
-  vec3 col = mix(aCol, bCol, m);
-  // chromatic at edge
-  float edge = abs(dist - p*0.7) < 0.08 ? 1.0 : 0.0;
-  col.r += edge * 0.06;
-  col.b -= edge * 0.04;
-  gl_FragColor = vec4(col, 1.0);
+varying vec2 v_texCoord;
+uniform sampler2D from;
+uniform sampler2D to;
+uniform float progress;
+uniform vec2 resolution;
+uniform float segments;
+
+
+uniform float segments;
+vec4 transition(vec2 uv) {
+  float angle = atan(uv.y - 0.5, uv.x - 0.5) - 2.35619449;
+  float normalized = (angle + 3.14159265359) / 6.28318530718;
+  float radius = length(uv - vec2(0.5, 0.5));
+  float p = progress;
+  float st = p + p * normalized;
+  float c = floor((st + radius) * segments);
+  float m = pow(abs(sin(c)), 4.0);
+  st = st + m;
+  vec2 pfr = vec2(cos(angle), sin(angle)) * st + 0.5;
+  vec2 pto = vec2(cos(angle), sin(angle)) * (st - 1.0) + 0.5;
+  return mix(texture2D(from, pfr), texture2D(to, pto), m);
+}
+void main() {
+  vec2 uv = v_texCoord;
+  gl_FragColor = transition(uv);
 }`;
-var FS_CUT = `
-precision mediump float;
-varying vec2 vUv;
-uniform sampler2D uFrom, uTo;
-uniform float uProgress;
-void main(){
-  gl_FragColor = vec4(texture2D(uProgress < 0.5 ? uFrom : uTo, vUv).rgb, 1.0);
-}`;
-var TR_DUR={cut:0.0,none:0.0,crossfade:0.45,flash:0.35,slide:0.42,zoomblur:0.50,filmburn:0.60,glitch:0.34,radialwipe:0.55,dispersion:0.50,noisereveal:0.60,lenswipe:0.55};
-var TR={ready:false,progs:{},quad:null,texFrom:null,texTo:null,fbo:null};
+GT_PARAMS["polar"]={"segments":5};
+var GT_DUR={"fade":0.4,"crosszoom":0.55,"dreamy":0.7,"ripple":0.6,"burned":0.75,"wind":0.5,"pixelize":0.6,"circleopen":0.55,"directionalwipe":0.5,"cube":0.8,"doorway":0.75,"waterdrop":0.65,"mosaic":0.7,"dissolve":0.5,"glitch_displace":0.45,"simplezoom":0.55,"angular":0.6,"squeeze":0.55,"linearblur":0.5,"kaleidoscope":0.7,"flyeye":0.65,"randomsquares":0.6,"bowtie":0.7,"crosshatch":0.65,"polar":0.7};
+var gtChoose = function(idx, seg, prevSeg, photos, energy, mood) {
+  var e = energy;
+  var strong = seg.strong;
+  var curL = (photos[seg.img] && photos[seg.img].lum != null) ? photos[seg.img].lum : 0.5;
+  var pImg = prevSeg ? prevSeg.img : -1;
+  var prevL = (pImg >= 0 && photos[pImg] && photos[pImg].lum != null) ? photos[pImg].lum : 0.5;
+  var dL = Math.abs(curL - prevL);
+
+  var pool = [];
+
+  if (e < 0.20) {
+    pool = ["fade", "dissolve", "dreamy"];
+  } else if (strong && dL > 0.30) {
+    pool = ["burned", "glitch_displace", "dissolve"];
+  } else if (strong && e > 0.70) {
+    pool = ["crosszoom", "simplezoom", "cube", "flyeye"];
+  } else if (strong) {
+    pool = ["crosszoom", "ripple", "waterdrop", "squeeze"];
+  } else if (e > 0.50) {
+    pool = ["wind", "directionalwipe", "angular", "linearblur"];
+  } else {
+    pool = ["circleopen", "doorway", "polar", "kaleidoscope", "randomsquares"];
+  }
+
+  // Anti-répétition : éviter la même que les 2 derniers plans
+  var last = prevSeg ? prevSeg.trans : null;
+  var last2 = (prevSeg && prevSeg._prev) ? prevSeg._prev.trans : null;
+  var candidates = pool.filter(function(t){ return t !== last && t !== last2; });
+  if (candidates.length === 0) candidates = pool;
+
+  return candidates[idx % candidates.length];
+};
+var TR_DUR=GT_DUR;
+var TR={ready:false,progs:{},params:{},quad:null,texFrom:null,texTo:null,fbo:null};
 function trTex(){ var t=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,t); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR); return t; }
-function trProg(fsrc){ var vs=compile(gl,gl.VERTEX_SHADER,VS_T), fs=compile(gl,gl.FRAGMENT_SHADER,fsrc); if(!vs||!fs) return null; var p=gl.createProgram(); gl.attachShader(p,vs); gl.attachShader(p,fs); gl.linkProgram(p); if(!gl.getProgramParameter(p,gl.LINK_STATUS)){ return null; } return p; }
+function trProgGT(fsrc){ var vs=compile(gl,gl.VERTEX_SHADER,GTVS), fs=compile(gl,gl.FRAGMENT_SHADER,fsrc); if(!vs||!fs) return null; var p=gl.createProgram(); gl.attachShader(p,vs); gl.attachShader(p,fs); gl.linkProgram(p); if(!gl.getProgramParameter(p,gl.LINK_STATUS)){ return null; } return p; }
 function initTransitions(){ TR.ready=false; if(!gl) return;
   try{
-    var defs={crossfade:FS_CROSSFADE,flash:FS_FLASH,slide:FS_SLIDE,zoomblur:FS_ZOOMBLUR,filmburn:FS_FILMBURN,glitch:FS_GLITCH,radialwipe:FS_RADIALWIPE,dispersion:FS_DISPERSION,noisereveal:FS_NOISEREVEAL,lenswipe:FS_LENSWIPE,cut:FS_CUT};
-    TR.progs={}; for(var k in defs){ var p=trProg(defs[k]); if(p) TR.progs[k]=p; }
+    TR.progs={}; TR.params=GT_PARAMS;
+    for(var k in GT_SHADERS){ var pr=trProgGT(GT_SHADERS[k]); if(pr) TR.progs[k]=pr; }
     TR.quad=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,TR.quad); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
     TR.texFrom=trTex(); TR.texTo=trTex();
     var tex=trTex(); gl.bindTexture(gl.TEXTURE_2D,tex); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,base.width,base.height,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
     var fb=gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER,fb); gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,tex,0); gl.bindFramebuffer(gl.FRAMEBUFFER,null);
     TR.fbo={fb:fb,tex:tex,w:base.width,h:base.height};
-    TR.ready=!!TR.progs.crossfade;
+    TR.ready=!!TR.progs.fade;
   }catch(e){ TR.ready=false; }
 }
 function trUpload(tex){ gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,tex); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,base); }
 function trMix(name,p,sg){
-  var prog=TR.progs[name]||TR.progs.cut; if(!prog) return false;
+  var prog=TR.progs[name]||TR.progs.fade; if(!prog) return false;
   gl.bindFramebuffer(gl.FRAMEBUFFER,TR.fbo.fb); gl.viewport(0,0,TR.fbo.w,TR.fbo.h);
   gl.useProgram(prog); gl.bindBuffer(gl.ARRAY_BUFFER,TR.quad);
-  var aP=gl.getAttribLocation(prog,"aPos"); gl.enableVertexAttribArray(aP); gl.vertexAttribPointer(aP,2,gl.FLOAT,false,0,0);
-  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,TR.texFrom); var lf=gl.getUniformLocation(prog,"uFrom"); if(lf) gl.uniform1i(lf,0);
-  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D,TR.texTo); var lt=gl.getUniformLocation(prog,"uTo"); if(lt) gl.uniform1i(lt,1);
-  var s1=function(n,v){ var l=gl.getUniformLocation(prog,n); if(l) gl.uniform1f(l,v); };
-  var s2=function(n,x,y){ var l=gl.getUniformLocation(prog,n); if(l) gl.uniform2f(l,x,y); };
-  var dir=(sg&&sg.slideDir)||1, seed=(sg?sg.start:0);
-  s1("uProgress",Math.max(0,Math.min(1,p)));
-  s1("uPower",2.0); s1("uDirX",dir); s1("uDirY",0.0); s1("uMotionBlur",0.6);
-  s1("uCenterX",0.5); s1("uCenterY",0.5); s1("uSeed",seed*0.9); s1("uClockwise",dir>0?1.0:0.0);
-  s1("uDir",0.0); s1("uAngle",seed); s2("uResolution",TR.fbo.w,TR.fbo.h);
+  var aP=gl.getAttribLocation(prog,"a_position"); gl.enableVertexAttribArray(aP); gl.vertexAttribPointer(aP,2,gl.FLOAT,false,0,0);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,TR.texFrom); var lf=gl.getUniformLocation(prog,"from"); if(lf) gl.uniform1i(lf,0);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D,TR.texTo); var lt=gl.getUniformLocation(prog,"to"); if(lt) gl.uniform1i(lt,1);
+  var lp=gl.getUniformLocation(prog,"progress"); if(lp) gl.uniform1f(lp,Math.max(0,Math.min(1,p)));
+  var lr=gl.getUniformLocation(prog,"resolution"); if(lr) gl.uniform2f(lr,TR.fbo.w,TR.fbo.h);
+  var defs=(TR.params&&TR.params[name])||{};
+  for(var k2 in defs){ var loc=gl.getUniformLocation(prog,k2); if(!loc) continue; var v=defs[k2]; if(Array.isArray(v)) gl.uniform2f(loc,v[0],v[1]); else if(typeof v==="boolean") gl.uniform1i(loc,v?1:0); else gl.uniform1f(loc,v); }
   gl.drawArrays(gl.TRIANGLES,0,6);
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D,null); gl.activeTexture(gl.TEXTURE0);
-  gl.bindFramebuffer(gl.FRAMEBUFFER,null);
-  return true;
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null); return true;
 }
 function initGL(){
   var cv=document.getElementById("gl");
