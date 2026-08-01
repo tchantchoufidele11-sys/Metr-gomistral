@@ -250,12 +250,13 @@ function buildPartition(){
     var curL=(PHOTOS[sg.img]&&PHOTOS[sg.img].lum!=null)?PHOTOS[sg.img].lum:0.5;
     var pImg=SEGS[idx-1].img, prevL=(pImg>=0&&PHOTOS[pImg]&&PHOTOS[pImg].lum!=null)?PHOTOS[pImg].lum:0.5;
     var dL=Math.abs(curL-prevL), tr;
-    if(e<0.30) tr="crossfade";                                     /* calme -> fondu */
-    else if(strong && dL>0.30) tr="flash";                         /* gros temps + saut de lumiere -> flash */
-    else if(strong && e>0.72) tr=(idx%2===0)?"zoomthrough":"whip"; /* drop -> traversant / balaye */
-    else if(strong) tr=(idx%3===0)?"zoomblur":"cut";               /* gros temps -> punch */
-    else tr=(idx%2===0)?"slide":"cut";                             /* temps moyen -> glisse/coupe */
-    if(idx>1 && SEGS[idx-1].trans===tr && tr!=="cut" && tr!=="crossfade") tr="cut";
+    if(e<0.28) tr="crossfade";                                     /* calme -> fondu */
+    else if(strong && dL>0.30) tr="flash";                         /* saut de lumiere -> flash */
+    else if(strong && e>0.75) tr="glitch";                         /* drop -> glitch */
+    else if(strong) tr=(idx%4===0)?"zoomblur":(idx%3===0?"filmburn":"cut");
+    else if(e>0.55) tr=(idx%2===0)?"slide":"dispersion";
+    else tr=(idx%3===0)?"radialwipe":"crossfade";
+    if(idx>1 && SEGS[idx-1].trans===tr && tr!=="cut" && tr!=="crossfade"){ var alts=["slide","zoomblur","radialwipe","lenswipe","noisereveal"]; tr=alts[idx%alts.length]; }
     sg.trans=tr;
   });
 }
@@ -474,6 +475,268 @@ void main(){
   gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
 }`;
 function compile(g,type,src){ var s=g.createShader(type); g.shaderSource(s,src); g.compileShader(s); if(!g.getShaderParameter(s,g.COMPILE_STATUS)){ console.warn(g.getShaderInfoLog(s)); return null; } return s; }
+/* ==== Transitions GPU : shaders valides de la lib + cablage maison robuste (FBO) ==== */
+var glQuad=null;
+var VS_T="attribute vec2 aPos;varying vec2 vUv;void main(){vUv=(aPos+1.0)*0.5;gl_Position=vec4(aPos,0.0,1.0);}";
+var FS_CROSSFADE = `
+precision mediump float;
+varying vec2 vUv;
+uniform sampler2D uFrom, uTo;
+uniform float uProgress;
+uniform float uPower; // 1.0 = linéaire, 2.0 = ease-in-out
+void main(){
+  float p = uProgress;
+  if(uPower > 1.0){
+    p = p < 0.5 ? pow(p*2.0, uPower)*0.5 : 1.0 - pow((1.0-p)*2.0, uPower)*0.5;
+  }
+  vec3 a = texture2D(uFrom, vUv).rgb;
+  vec3 b = texture2D(uTo, vUv).rgb;
+  gl_FragColor = vec4(mix(a, b, p), 1.0);
+}`;
+var FS_FLASH = `
+precision mediump float;
+varying vec2 vUv;
+uniform sampler2D uFrom, uTo;
+uniform float uProgress;
+void main(){
+  vec3 a = texture2D(uFrom, vUv).rgb;
+  vec3 b = texture2D(uTo, vUv).rgb;
+  float flash = 1.0 - abs(uProgress - 0.5) * 2.0; // pic au milieu
+  flash = pow(flash, 0.6);
+  vec3 col = mix(a, b, smoothstep(0.35, 0.65, uProgress));
+  col += vec3(1.0, 0.95, 0.85) * flash * 0.55;
+  gl_FragColor = vec4(col, 1.0);
+}`;
+var FS_SLIDE = `
+precision mediump float;
+varying vec2 vUv;
+uniform sampler2D uFrom, uTo;
+uniform float uProgress;
+uniform float uDirX, uDirY; // -1,0,1
+uniform float uMotionBlur;  // 0..1 intensité
+void main(){
+  vec2 dir = vec2(uDirX, uDirY);
+  float p = uProgress;
+  vec2 off = dir * p;
+  vec2 offPrev = dir * (p - 1.0);
+  vec3 a = texture2D(uFrom, vUv - offPrev).rgb;
+  vec3 b = texture2D(uTo, vUv - off).rgb;
+  // motion blur sur le bord entrant
+  float edge = 1.0 - smoothstep(0.0, 0.15, abs(dot(vUv - 0.5, dir)));
+  float mb = edge * uMotionBlur * 0.06;
+  vec3 blur = vec3(0.0);
+  for(float i=-3.0;i<=3.0;i+=1.0){
+    blur += texture2D(uTo, vUv - off + dir * i * mb).rgb;
+  }
+  blur /= 7.0;
+  float m = smoothstep(0.0, 0.25, p);
+  vec3 col = mix(a, blur, m);
+  col = mix(col, b, smoothstep(0.2, 0.8, p));
+  gl_FragColor = vec4(col, 1.0);
+}`;
+var FS_ZOOMBLUR = `
+precision mediump float;
+varying vec2 vUv;
+uniform sampler2D uFrom, uTo;
+uniform float uProgress;
+uniform float uCenterX, uCenterY;
+void main(){
+  vec2 c = vec2(uCenterX, uCenterY);
+  vec2 d = vUv - c;
+  float p = uProgress;
+  float inv = 1.0 - p;
+  // zoom out from + blur
+  vec3 a = vec3(0.0); float aw = 0.0;
+  for(float i=0.0;i<8.0;i++){
+    float z = 1.0 + i * 0.04 * inv;
+    float w = 1.0 - i/8.0;
+    a += texture2D(uFrom, c + d * z).rgb * w;
+    aw += w;
+  }
+  a /= aw;
+  // zoom in to
+  vec3 b = vec3(0.0); float bw = 0.0;
+  for(float i=0.0;i<8.0;i++){
+    float z = 1.0 + (7.0-i) * 0.04 * p;
+    float w = 1.0 - i/8.0;
+    b += texture2D(uTo, c + d * z).rgb * w;
+    bw += w;
+  }
+  b /= bw;
+  gl_FragColor = vec4(mix(a, b, smoothstep(0.25, 0.75, p)), 1.0);
+}`;
+var FS_FILMBURN = `
+precision mediump float;
+varying vec2 vUv;
+uniform sampler2D uFrom, uTo;
+uniform float uProgress;
+float rand(vec2 c){ return fract(sin(dot(c,vec2(12.9898,78.233)))*43758.5453); }
+void main(){
+  float p = uProgress;
+  float burn = smoothstep(0.15, 0.55, p) * (1.0 - smoothstep(0.55, 0.95, p));
+  burn = pow(burn, 0.5);
+  vec3 orange = vec3(1.0, 0.45, 0.12);
+  float n = rand(vUv * vec2(1.0, 300.0) + p) * 0.15;
+  vec3 a = texture2D(uFrom, vUv).rgb;
+  vec3 b = texture2D(uTo, vUv).rgb;
+  float m = smoothstep(0.25, 0.75, p);
+  vec3 col = mix(a, b, m);
+  col = mix(col, orange + n, burn * 0.7);
+  col += vec3(1.0, 0.8, 0.5) * burn * 0.25;
+  gl_FragColor = vec4(col, 1.0);
+}`;
+var FS_GLITCH = `
+precision mediump float;
+varying vec2 vUv;
+uniform sampler2D uFrom, uTo;
+uniform float uProgress;
+uniform float uSeed;
+float rand(vec2 c){ return fract(sin(dot(c,vec2(12.9898,78.233)))*43758.5453); }
+void main(){
+  float p = uProgress;
+  float intensity = (1.0 - abs(p - 0.5)*2.0);
+  intensity = pow(intensity, 0.4);
+  float seed = uSeed;
+  vec2 uv = vUv;
+  // block displacement
+  float block = rand(vec2(floor(uv.y*20.0), floor(seed)));
+  float shift = (rand(vec2(block, seed+1.0)) - 0.5) * intensity * 0.12;
+  uv.x += shift;
+  // rgb split
+  float split = intensity * 0.008;
+  vec3 a; a.r=texture2D(uFrom, uv+vec2(split,0.0)).r; a.g=texture2D(uFrom, uv).g; a.b=texture2D(uFrom, uv-vec2(split,0.0)).b;
+  vec3 b; b.r=texture2D(uTo,   uv+vec2(split,0.0)).r; b.g=texture2D(uTo,   uv).g; b.b=texture2D(uTo,   uv-vec2(split,0.0)).b;
+  // scanline darkening during glitch
+  float scan = sin(uv.y * 800.0) * 0.04 * intensity;
+  float m = smoothstep(0.3, 0.7, p);
+  vec3 col = mix(a, b, m) - scan;
+  gl_FragColor = vec4(col, 1.0);
+}`;
+var FS_RADIALWIPE = `
+precision mediump float;
+varying vec2 vUv;
+uniform sampler2D uFrom, uTo;
+uniform float uProgress;
+uniform float uClockwise; // 1.0 ou -1.0
+void main(){
+  vec2 d = vUv - 0.5;
+  float angle = atan(d.y, d.x) / 6.28318530718; // -0.5..0.5
+  angle = fract(angle + 0.5);
+  float p = uProgress;
+  float edge = smoothstep(p-0.05, p+0.05, angle);
+  // feather
+  float feather = smoothstep(p-0.12, p-0.02, angle) - smoothstep(p+0.02, p+0.12, angle);
+  vec3 a = texture2D(uFrom, vUv).rgb;
+  vec3 b = texture2D(uTo, vUv).rgb;
+  vec3 col = mix(a, b, edge);
+  col += vec3(1.0, 0.9, 0.7) * feather * 0.25;
+  gl_FragColor = vec4(col, 1.0);
+}`;
+var FS_DISPERSION = `
+precision mediump float;
+varying vec2 vUv;
+uniform sampler2D uFrom, uTo;
+uniform float uProgress;
+void main(){
+  float p = uProgress;
+  float inv = 1.0 - p;
+  float strength = sin(p * 3.14159265359) * 0.025;
+  vec2 uv = vUv;
+  vec3 a; a.r=texture2D(uFrom, uv+vec2(strength,0.0)*inv).r; a.g=texture2D(uFrom, uv).g; a.b=texture2D(uFrom, uv-vec2(strength,0.0)*inv).b;
+  vec3 b; b.r=texture2D(uTo,   uv-vec2(strength,0.0)*p).r;   b.g=texture2D(uTo,   uv).g; b.b=texture2D(uTo,   uv+vec2(strength,0.0)*p).b;
+  float m = smoothstep(0.25, 0.75, p);
+  gl_FragColor = vec4(mix(a, b, m), 1.0);
+}`;
+var FS_NOISEREVEAL = `
+precision mediump float;
+varying vec2 vUv;
+uniform sampler2D uFrom, uTo;
+uniform float uProgress;
+uniform float uSeed;
+float rand(vec2 c){ return fract(sin(dot(c,vec2(12.9898,78.233)))*43758.5453); }
+void main(){
+  float p = uProgress;
+  float n = rand(vUv * 200.0 + uSeed);
+  float threshold = p * 1.3 - 0.15;
+  float edge = smoothstep(threshold-0.08, threshold+0.08, n);
+  vec3 a = texture2D(uFrom, vUv).rgb;
+  vec3 b = texture2D(uTo, vUv).rgb;
+  // add noise grain during transition
+  float grain = (rand(vUv*800.0+uSeed*2.0)-0.5)*0.08 * sin(p*3.14159);
+  gl_FragColor = vec4(mix(a, b, edge) + grain, 1.0);
+}`;
+var FS_LENSWIPE = `
+precision mediump float;
+varying vec2 vUv;
+uniform sampler2D uFrom, uTo;
+uniform float uProgress;
+uniform float uAngle; // 0..6.28
+void main(){
+  float p = uProgress;
+  vec2 d = vUv - 0.5;
+  float a = atan(d.y, d.x);
+  float dist = length(d);
+  // lens distortion warp
+  float warp = sin(p*3.14159) * 0.15;
+  float k = 1.0 + warp * dist * dist;
+  vec2 uvA = 0.5 + d * (1.0 - warp * (1.0-p));
+  vec2 uvB = 0.5 + d * (1.0 + warp * p);
+  vec3 aCol = texture2D(uFrom, uvA).rgb;
+  vec3 bCol = texture2D(uTo,   uvB).rgb;
+  // iris wipe
+  float iris = smoothstep(p-0.05, p+0.05, dist * 2.0);
+  float m = smoothstep(0.2, 0.8, p);
+  vec3 col = mix(aCol, bCol, m);
+  // chromatic at edge
+  float edge = abs(dist - p*0.7) < 0.08 ? 1.0 : 0.0;
+  col.r += edge * 0.06;
+  col.b -= edge * 0.04;
+  gl_FragColor = vec4(col, 1.0);
+}`;
+var FS_CUT = `
+precision mediump float;
+varying vec2 vUv;
+uniform sampler2D uFrom, uTo;
+uniform float uProgress;
+void main(){
+  gl_FragColor = vec4(texture2D(uProgress < 0.5 ? uFrom : uTo, vUv).rgb, 1.0);
+}`;
+var TR_DUR={cut:0.0,none:0.0,crossfade:0.45,flash:0.35,slide:0.42,zoomblur:0.50,filmburn:0.60,glitch:0.34,radialwipe:0.55,dispersion:0.50,noisereveal:0.60,lenswipe:0.55};
+var TR={ready:false,progs:{},quad:null,texFrom:null,texTo:null,fbo:null};
+function trTex(){ var t=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,t); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR); return t; }
+function trProg(fsrc){ var vs=compile(gl,gl.VERTEX_SHADER,VS_T), fs=compile(gl,gl.FRAGMENT_SHADER,fsrc); if(!vs||!fs) return null; var p=gl.createProgram(); gl.attachShader(p,vs); gl.attachShader(p,fs); gl.linkProgram(p); if(!gl.getProgramParameter(p,gl.LINK_STATUS)){ return null; } return p; }
+function initTransitions(){ TR.ready=false; if(!gl) return;
+  try{
+    var defs={crossfade:FS_CROSSFADE,flash:FS_FLASH,slide:FS_SLIDE,zoomblur:FS_ZOOMBLUR,filmburn:FS_FILMBURN,glitch:FS_GLITCH,radialwipe:FS_RADIALWIPE,dispersion:FS_DISPERSION,noisereveal:FS_NOISEREVEAL,lenswipe:FS_LENSWIPE,cut:FS_CUT};
+    TR.progs={}; for(var k in defs){ var p=trProg(defs[k]); if(p) TR.progs[k]=p; }
+    TR.quad=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,TR.quad); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
+    TR.texFrom=trTex(); TR.texTo=trTex();
+    var tex=trTex(); gl.bindTexture(gl.TEXTURE_2D,tex); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,base.width,base.height,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+    var fb=gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER,fb); gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,tex,0); gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+    TR.fbo={fb:fb,tex:tex,w:base.width,h:base.height};
+    TR.ready=!!TR.progs.crossfade;
+  }catch(e){ TR.ready=false; }
+}
+function trUpload(tex){ gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,tex); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,base); }
+function trMix(name,p,sg){
+  var prog=TR.progs[name]||TR.progs.cut; if(!prog) return false;
+  gl.bindFramebuffer(gl.FRAMEBUFFER,TR.fbo.fb); gl.viewport(0,0,TR.fbo.w,TR.fbo.h);
+  gl.useProgram(prog); gl.bindBuffer(gl.ARRAY_BUFFER,TR.quad);
+  var aP=gl.getAttribLocation(prog,"aPos"); gl.enableVertexAttribArray(aP); gl.vertexAttribPointer(aP,2,gl.FLOAT,false,0,0);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,TR.texFrom); var lf=gl.getUniformLocation(prog,"uFrom"); if(lf) gl.uniform1i(lf,0);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D,TR.texTo); var lt=gl.getUniformLocation(prog,"uTo"); if(lt) gl.uniform1i(lt,1);
+  var s1=function(n,v){ var l=gl.getUniformLocation(prog,n); if(l) gl.uniform1f(l,v); };
+  var s2=function(n,x,y){ var l=gl.getUniformLocation(prog,n); if(l) gl.uniform2f(l,x,y); };
+  var dir=(sg&&sg.slideDir)||1, seed=(sg?sg.start:0);
+  s1("uProgress",Math.max(0,Math.min(1,p)));
+  s1("uPower",2.0); s1("uDirX",dir); s1("uDirY",0.0); s1("uMotionBlur",0.6);
+  s1("uCenterX",0.5); s1("uCenterY",0.5); s1("uSeed",seed*0.9); s1("uClockwise",dir>0?1.0:0.0);
+  s1("uDir",0.0); s1("uAngle",seed); s2("uResolution",TR.fbo.w,TR.fbo.h);
+  gl.drawArrays(gl.TRIANGLES,0,6);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D,null); gl.activeTexture(gl.TEXTURE0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+  return true;
+}
 function initGL(){
   var cv=document.getElementById("gl");
   try{ gl=cv.getContext("webgl")||cv.getContext("experimental-webgl"); }catch(e){ gl=null; }
@@ -485,19 +748,23 @@ function initGL(){
   var vs=compile(gl,gl.VERTEX_SHADER,VS), fs=compile(gl,gl.FRAGMENT_SHADER,FS);
   if(!vs||!fs){ gl=null; document.getElementById("base").style.visibility="visible"; document.getElementById("gl").style.display="none"; return false; }
   glProg=gl.createProgram(); gl.attachShader(glProg,vs); gl.attachShader(glProg,fs); gl.linkProgram(glProg); gl.useProgram(glProg);
-  var buf=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+  glQuad=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,glQuad);
   gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]),gl.STATIC_DRAW);
   var aPos=gl.getAttribLocation(glProg,"aPos"); gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos,2,gl.FLOAT,false,0,0);
   glTex=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,glTex);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
   ["uTime","uResolution","uGrain","uVig","uExpo","uContrast","uSat","uTemp","uLeak","uPulse","uChromatic","uBloom","uHalation","uAnamorphic","uDust","uScanlines","uShutter","uLensFlare","uFlareX","uFlareY"].forEach(function(n){ glU[n]=gl.getUniformLocation(glProg,n); });
-  glReady=true; return true;
+  glReady=true; initTransitions(); return true;
 }
-function drawGL(time,pulse){
+function drawGL(time,pulse,srcTex){
   if(!glReady) return; var G=MOODS[MOOD].grade, F=MOODS[MOOD].fx||{};
-  gl.bindTexture(gl.TEXTURE_2D,glTex);
-  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,base);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.viewport(0,0,base.width,base.height);
+  gl.useProgram(glProg);
+  gl.bindBuffer(gl.ARRAY_BUFFER,glQuad); var aP=gl.getAttribLocation(glProg,"aPos"); gl.enableVertexAttribArray(aP); gl.vertexAttribPointer(aP,2,gl.FLOAT,false,0,0);
+  gl.activeTexture(gl.TEXTURE0);
+  if(srcTex){ gl.bindTexture(gl.TEXTURE_2D,srcTex); } else { gl.bindTexture(gl.TEXTURE_2D,glTex); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,base); }
+  var ut=gl.getUniformLocation(glProg,"uTex"); if(ut) gl.uniform1i(ut,0);
   gl.uniform1f(glU.uTime,time); if(glU.uResolution) gl.uniform2f(glU.uResolution,base.width,base.height);
   gl.uniform1f(glU.uGrain,G.grain); gl.uniform1f(glU.uVig,G.vig);
   gl.uniform1f(glU.uExpo,G.expo); gl.uniform1f(glU.uContrast,G.contrast); gl.uniform1f(glU.uSat,G.sat);
@@ -531,8 +798,22 @@ function visualTime(){ return (audioEl?audioEl.currentTime:0) + LEAD + SYNC; }
 function loop(){
   if(!playing) return;
   var t=visualTime(); if(t<0) t=0;
-  var r=renderBaseFrame(t);
-  if(glReady) drawGL(t,r.strongPulse);
+  var idx=-1; for(var i=0;i<SEGS.length;i++){ if(t>=SEGS[i].start && t<SEGS[i].end){ idx=i; break; } }
+  if(idx<0 && SEGS.length) idx=(t<SEGS[0].start)?0:SEGS.length-1;
+  var sg=(idx>=0)?SEGS[idx]:null, prev=(idx>0)?SEGS[idx-1]:null, into=sg?(t-sg.start):0;
+  var trName=sg?sg.trans:"none";
+  var TRd=Math.min((TR_DUR[trName]!=null?TR_DUR[trName]:0),(sg?(sg.end-sg.start)*0.5:0));
+  var inTrans=(sg&&prev&&TRd>0&&into<TRd&&trName!=="cut"&&trName!=="none");
+  var strongPulse=(sg&&sg.strong&&into<0.10)?(1-into/0.10):0;
+  if(glReady && TR.ready && inTrans && TR.progs[trName]){
+    drawSegAt(prev,prev.end-0.001,0,1); trUpload(TR.texFrom);
+    drawSegAt(sg,t,0,1); trUpload(TR.texTo);
+    trMix(trName,into/TRd,sg);
+    drawGL(t,strongPulse,TR.fbo.tex);
+  } else {
+    var r=renderBaseFrame(t);
+    if(glReady) drawGL(t,r.strongPulse);
+  }
   paintStrip(t);
   raf=requestAnimationFrame(loop);
 }
