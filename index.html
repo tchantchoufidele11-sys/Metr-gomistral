@@ -6323,7 +6323,7 @@ ATMO_SHADERS["fog"]=ATMO_PRE+`void main(){ vec2 uv=v_texCoord; vec3 col=texture2
   float v=mix(mix(h21(ip),h21(ip+vec2(1.0,0.0)),fp.x), mix(h21(ip+vec2(0.0,1.0)),h21(ip+vec2(1.0,1.0)),fp.x), fp.y); n+=v*a; a*=0.5; p*=2.0; }
  float fog=smoothstep(0.3,0.9,n)*uAmt*0.5; col=mix(col, vec3(0.8,0.82,0.86), fog); gl_FragColor=vec4(col,1.0); }`;
 var ATMO_NAMES=["snow","rain","golddust","godrays","embers","fireflies","fog"];
-var ATMO_FREQ={cinema:0.60,doux:0.55,dynamique:0.72,voyage:0.78};
+var ATMO_FREQ={cinema:0.0,doux:0.0,dynamique:0.0,voyage:0.0};  /* couche bricolee desactivee -> remplacee par tsParticles */
 var ATMO_AMT={cinema:1.0,doux:0.9,dynamique:1.4,voyage:1.2};
 var ATMO={ready:false,progs:{},okNames:null,okCount:0,fbo:null};
 var _atmo=null, _atmoAmt=0.6, _atmoBag=[];
