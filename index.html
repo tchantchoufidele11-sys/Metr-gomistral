@@ -486,13 +486,13 @@ function compile(g,type,src){ var s=g.createShader(type); g.shaderSource(s,src);
 var glQuad=null;
 var GTVS = "attribute vec2 a_position;varying vec2 v_texCoord;void main(){v_texCoord=(a_position+1.0)*0.5;gl_Position=vec4(a_position,0.0,1.0);}";
 var GT_SHADERS={};
+var GT_PARAMS={};
 GT_SHADERS["AdvancedMosaic"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float pixelSize = 50.0;
 // Author: Sergey Kosarevsky
 // License: MIT
 // Ported from https://gist.github.com/corporateshark/21d2fdd24c706952dc8c
@@ -514,13 +514,13 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["AdvancedMosaic"]=[["pixelSize","float",50]];
 GT_SHADERS["BlockDissolve"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float blocksize = 0.02;
 // Author: nwoeanhinnogaehr
 // License: MIT
 // Ported from https://gist.github.com/nwoeanhinnogaehr/b93818de23d4511fde10
@@ -537,6 +537,7 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["BlockDissolve"]=[["blocksize","float",0.02]];
 GT_SHADERS["BookFlip"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
@@ -581,9 +582,6 @@ uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const vec4 shadow_colour = vec4(0.0,0.0,0.0,0.6);
-const float shadow_height = 0.075;
-const float bounces = 3.0;
 // Author: Adrian Purser
 // License: MIT
 
@@ -616,6 +614,7 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["Bounce"]=[["shadow_colour","vec4",[0,0,0,0.6]],["shadow_height","float",0.075],["bounces","float",3]];
 GT_SHADERS["BowTieHorizontal"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
@@ -872,8 +871,6 @@ uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float adjust = 0.5;
-const bool reverse = false;
 // Author: KMojek
 // License: MIT
 
@@ -946,14 +943,13 @@ vec4 transition (vec2 uv) {
 }
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["BowTieWithParameter"]=[["adjust","float",0.5],["reverse","bool",false]];
 GT_SHADERS["Box"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const int rectIn = 1;
-const int location = 0;
 // Author: lql
 // License: MIT
 uniform int rectIn; // =1
@@ -986,15 +982,13 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["Box"]=[["rectIn","int",1],["location","int",0]];
 GT_SHADERS["ButterflyWaveScrawler"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float amplitude = 1.0;
-const float waves = 30.0;
-const float colorSeparation = 0.3;
 // Author: mandubian
 // License: MIT
 uniform float amplitude; // = 1.0
@@ -1028,13 +1022,13 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["ButterflyWaveScrawler"]=[["amplitude","float",1],["waves","float",30],["colorSeparation","float",0.3]];
 GT_SHADERS["CircleCrop"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const vec4 bgcolor = vec4(0.0,0.0,0.0,1.0);
 // License: MIT
 // Author: fkuteken
 // ported by gre from https://gist.github.com/fkuteken/f63e3009c1143950dee9063c3b83fb88
@@ -1055,13 +1049,13 @@ vec4 transition(vec2 p) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["CircleCrop"]=[["bgcolor","vec4",[0,0,0,1]]];
 GT_SHADERS["ColourDistance"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float power = 5.0;
 // License: MIT
 // Author: P-Seebauer
 // ported by gre from https://gist.github.com/P-Seebauer/2a5fa2f77c883dd661f9
@@ -1081,16 +1075,13 @@ vec4 transition(vec2 p) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["ColourDistance"]=[["power","float",5]];
 GT_SHADERS["CrazyParametricFun"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float a = 4.0;
-const float b = 1.0;
-const float amplitude = 120.0;
-const float smoothness = 0.1;
 // Author: mandubian
 // License: MIT
 
@@ -1111,13 +1102,13 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["CrazyParametricFun"]=[["a","float",4],["b","float",1],["amplitude","float",120],["smoothness","float",0.1]];
 GT_SHADERS["CrossZoom"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float strength = 0.4;
 // License: MIT
 // Author: rectalogic
 // ported by gre from https://gist.github.com/rectalogic/b86b90161503a0023231
@@ -1185,13 +1176,13 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["CrossZoom"]=[["strength","float",0.4]];
 GT_SHADERS["DefocusBlur"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float blurSize = 0.02;
 // Author: Sergey Kosarevsky
 // License: MIT
 // Ported from https://gist.github.com/corporateshark/b9f8e5675c647e615419
@@ -1238,13 +1229,13 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["DefocusBlur"]=[["blurSize","float",0.02]];
 GT_SHADERS["Directional"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const vec2 direction = vec2(0.0,1.0);
 // Author: Gaëtan Renaudeau
 // License: MIT
 
@@ -1262,14 +1253,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["Directional"]=[["direction","vec2",[0,1]]];
 GT_SHADERS["DirectionalScaled"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const vec2 direction = vec2(0.0,1.0);
-const float scale = 0.7;
 // Author: Thibaut Foussard
 // based on Directional transition by Gaëtan Renaudeau
 // https://gl-transitions.com/editor/Directional
@@ -1304,17 +1294,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["DirectionalScaled"]=[["direction","vec2",[0,1]],["scale","float",0.7]];
 GT_SHADERS["DoomScreenTransition"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const int bars = 30;
-const float amplitude = 2.0;
-const float noise = 0.1;
-const float frequency = 0.5;
-const float dripScale = 0.5;
 // Author: Zeh Fernando
 // License: MIT
 
@@ -1377,6 +1363,7 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["DoomScreenTransition"]=[["bars","int",30],["amplitude","float",2],["noise","float",0.1],["frequency","float",0.5],["dripScale","float",0.5]];
 GT_SHADERS["Dreamy"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
@@ -1403,8 +1390,6 @@ uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float rotation = 6.0;
-const float scale = 1.2;
 // Author: Zeh Fernando
 // License: MIT
 
@@ -1448,18 +1433,13 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["DreamyZoom"]=[["rotation","float",6],["scale","float",1.2]];
 GT_SHADERS["Drop_Zone_Flicker"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float frameRate = 24.0;
-const float rgbOffset = 0.014;
-const float blockAmount = 0.72;
-const float ghostAmount = 0.62;
-const float redCyan = 0.58;
-const float scanline = 0.075;
 // Author: bread
 // License: MIT
 // Drop_Zone_Flicker.glsl
@@ -1619,14 +1599,13 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["Drop_Zone_Flicker"]=[["frameRate","float",24],["rgbOffset","float",0.014],["blockAmount","float",0.72],["ghostAmount","float",0.62],["redCyan","float",0.58],["scanline","float",0.075]];
 GT_SHADERS["EdgeTransition"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float edge_thickness = 0.001;
-const float edge_brightness = 8.0;
 // Author: Woohyun Kim
 // License: MIT
 
@@ -1677,13 +1656,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["EdgeTransition"]=[["edge_thickness","float",0.001],["edge_brightness","float",8]];
 GT_SHADERS["FilmBurn"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float Seed = 2.31;
 // Author: Anastasia Dunbar
 // License: MIT
 uniform float Seed; // = 2.31
@@ -1746,6 +1725,7 @@ vec4 transition(vec2 p) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["FilmBurn"]=[["Seed","float",2.31]];
 GT_SHADERS["Fold"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
@@ -1881,11 +1861,6 @@ uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const ivec2 size = ivec2(4,4);
-const float pause = 0.1;
-const float dividerWidth = 0.05;
-const vec4 bgcolor = vec4(0.0,0.0,0.0,1.0);
-const float randomness = 0.1;
 // License: MIT
 // Author: TimDonselaar
 // ported by gre from https://gist.github.com/TimDonselaar/9bcd1c4b5934ba60087bdb55c2ea92e5
@@ -1961,6 +1936,7 @@ vec4 transition(vec2 p) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["GridFlip"]=[["size","ivec2",[4,4]],["pause","float",0.1],["dividerWidth","float",0.05],["bgcolor","vec4",[0,0,0,1]],["randomness","float",0.1]];
 GT_SHADERS["HSVfade"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
@@ -2315,7 +2291,6 @@ uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float intensity = 0.1;
 // Author: gre
 // License: MIT
 uniform float intensity; // = 0.1
@@ -2345,14 +2320,13 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["LinearBlur"]=[["intensity","float",0.1]];
 GT_SHADERS["Mosaic"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const int endx = 2;
-const int endy = -1;
 // License: MIT
 // Author: Xaychru
 // ported by gre from https://gist.github.com/Xaychru/130bb7b7affedbda9df5
@@ -2398,13 +2372,13 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["Mosaic"]=[["endx","int",2],["endy","int",-1]];
 GT_SHADERS["Overexposure"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float strength = 0.6;
 // Author: Ben Zhang
 // License: MIT
 
@@ -2429,14 +2403,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["Overexposure"]=[["strength","float",0.6]];
 GT_SHADERS["PolkaDotsCurtain"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float dots = 20.0;
-const vec2 center = vec2(0.0,0.0);
 // Author: bobylito
 // License: MIT
 const float SQRT_2 = 1.414213562373;
@@ -2450,15 +2423,13 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["PolkaDotsCurtain"]=[["dots","float",20],["center","vec2",[0,0]]];
 GT_SHADERS["PuzzleRight"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const ivec2 size = ivec2(4,4);
-const float pause = 0.1;
-const float dividerWidth = 0.005;
 // Author: JustKirillS
 // License: MIT
 // Ported from https://gist.github.com/JustKirillS/714f095318834f4d2375de872c53af1e
@@ -2516,13 +2487,13 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["PuzzleRight"]=[["size","ivec2",[4,4]],["pause","float",0.1],["dividerWidth","float",0.005]];
 GT_SHADERS["Radial"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float smoothness = 1.0;
 // License: MIT
 // Author: Xaychru
 // ported by gre from https://gist.github.com/Xaychru/ce1d48f0ce00bb379750
@@ -2542,13 +2513,13 @@ vec4 transition(vec2 p) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["Radial"]=[["smoothness","float",1]];
 GT_SHADERS["Rectangle"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const vec4 bgcolor = vec4(0.0,0.0,0.0,1.0);
 // Author: martiniti
 // License: MIT
 
@@ -2578,13 +2549,13 @@ vec4 transition(vec2 p) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["Rectangle"]=[["bgcolor","vec4",[0,0,0,1]]];
 GT_SHADERS["RectangleCrop"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const vec4 bgcolor = vec4(0.0,0.0,0.0,1.0);
 // License: MIT
 // Author: martiniti
 
@@ -2614,22 +2585,13 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["RectangleCrop"]=[["bgcolor","vec4",[0,0,0,1]]];
 GT_SHADERS["Revolve_Left"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const vec2 center = vec2(0.46,0.52);
-const float direction = -1.0;
-const float maxRotation = 1.95;
-const float peakZoom = 2.22;
-const float swirl = 2.85;
-const float barrel = 0.38;
-const float motionBlur = 1.0;
-const float switchStart = 0.3;
-const float switchEnd = 0.5;
-const float shadow = 0.16;
 // Author: bread
 // License: MIT
 // gl-transitions v1 compatible
@@ -2727,14 +2689,13 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["Revolve_Left"]=[["center","vec2",[0.46,0.52]],["direction","float",-1],["maxRotation","float",1.95],["peakZoom","float",2.22],["swirl","float",2.85],["barrel","float",0.38],["motionBlur","float",1],["switchStart","float",0.3],["switchEnd","float",0.5],["shadow","float",0.16]];
 GT_SHADERS["Rolls"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const int type = 0;
-const bool RotDown = false;
 // Author: Mark Craig
 // mrmcsoftware on github and youtube ( http://www.youtube.com/MrMcSoftware )
 // License: MIT
@@ -2775,15 +2736,13 @@ return(getToColor(uv));
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["Rolls"]=[["type","int",0],["RotDown","bool",false]];
 GT_SHADERS["RotateScaleVanish"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const bool FadeInSecond = true;
-const bool ReverseEffect = false;
-const bool ReverseRotation = false;
 // Author: Mark Craig
 // mrmcsoftware on github and youtube ( http://www.youtube.com/MrMcSoftware )
 // License: MIT
@@ -2823,6 +2782,7 @@ return((1.0 - t) * col3 + t * ColorTo); // could have used mix
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["RotateScaleVanish"]=[["FadeInSecond","bool",true],["ReverseEffect","bool",false],["ReverseRotation","bool",false]];
 GT_SHADERS["SimpleFlip"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
@@ -2849,7 +2809,6 @@ uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float zoom_quickness = 0.8;
 // Author: 0gust1
 // License: MIT
 
@@ -2869,14 +2828,13 @@ vec4 transition (vec2 uv) {
 }
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["SimpleZoom"]=[["zoom_quickness","float",0.8]];
 GT_SHADERS["SimpleZoomOut"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float zoom_quickness = 0.8;
-const bool fade = true;
 // Author: Tianshuo
 // License: MIT
 
@@ -2899,14 +2857,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["SimpleZoomOut"]=[["zoom_quickness","float",0.8],["fade","bool",true]];
 GT_SHADERS["Slides"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const int type = 0;
-const bool In = false;
 // Author: Mark Craig
 // mrmcsoftware on github and youtube ( http://www.youtube.com/MrMcSoftware )
 // License: MIT
@@ -2947,16 +2904,13 @@ return(In ? getFromColor(uv0) : getToColor(uv0));
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["Slides"]=[["type","int",0],["In","bool",false]];
 GT_SHADERS["StarWipe"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float border_thickness = 0.01;
-const float star_rotation = 0.75;
-const vec4 border_color = vec4(1.0,1.0,1.0,1.0);
-const vec2 star_center = vec2(0.5,0.5);
 // Author: Ben Lucas
 // License: MIT
 #define PI 3.141592653589793
@@ -3005,14 +2959,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["StarWipe"]=[["border_thickness","float",0.01],["star_rotation","float",0.75],["border_color","vec4",[1,1,1,1]],["star_center","vec2",[0.5,0.5]]];
 GT_SHADERS["StaticFade"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float n_noise_pixels = 200.0;
-const float static_luminosity = 0.8;
 // Author: Ben Lucas
 // License: MIT
 
@@ -3060,14 +3013,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["StaticFade"]=[["n_noise_pixels","float",200],["static_luminosity","float",0.8]];
 GT_SHADERS["StereoViewer"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float zoom = 0.88;
-const float corner_radius = 0.22;
 // Tunable parameters
 // How much to zoom (out) for the effect ~ 0.5 - 1.0
 uniform float zoom; // = 0.88
@@ -3281,21 +3233,13 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["StereoViewer"]=[["zoom","float",0.88],["corner_radius","float",0.22]];
 GT_SHADERS["StripDatamoshGlitch"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float strength = 1.0;
-const float horizontalBars = 42.0;
-const float verticalSlits = 18.0;
-const float tear = 0.18;
-const float chroma = 0.032;
-const float residue = 0.62;
-const float noiseAmount = 0.16;
-const float scanAmount = 0.13;
-const float flashAmount = 0.2;
 // Author: bread
 // License: MIT
 
@@ -3483,6 +3427,7 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["StripDatamoshGlitch"]=[["strength","float",1],["horizontalBars","float",42],["verticalSlits","float",18],["tear","float",0.18],["chroma","float",0.032],["residue","float",0.62],["noiseAmount","float",0.16],["scanAmount","float",0.13],["flashAmount","float",0.2]];
 GT_SHADERS["Swirl"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
@@ -3529,7 +3474,6 @@ uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float offset = 0.05;
 // Author: Brandon Anzaldi
 // License: MIT
 uniform float offset; // = 0.05
@@ -3558,15 +3502,13 @@ vec4 transition(vec2 p) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["TVStatic"]=[["offset","float",0.05]];
 GT_SHADERS["TilesWave"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const ivec2 tileCount = ivec2(8,8);
-const bool flipX = true;
-const bool flipY = false;
 // Author: numb3r23
 // License: MIT
 // Ported from https://gist.github.com/numb3r23/169781bb76f310e2bfde
@@ -3629,6 +3571,7 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["TilesWave"]=[["tileCount","ivec2",[8,8]],["flipX","bool",true],["flipY","bool",false]];
 GT_SHADERS["TopBottom"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
@@ -3712,8 +3655,6 @@ uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float amplitude = 30.0;
-const float speed = 30.0;
 // Author: Paweł Płóciennik
 // License: MIT
 uniform float amplitude; // = 30
@@ -3733,6 +3674,7 @@ vec4 transition(vec2 p) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["WaterDrop"]=[["amplitude","float",30],["speed","float",30]];
 GT_SHADERS["ZoomInCircles"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
@@ -3786,7 +3728,6 @@ uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float zoom_quickness = 0.8;
 // Author: Handk
 // License: MIT
 
@@ -3823,13 +3764,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["ZoomLeftWipe"]=[["zoom_quickness","float",0.8]];
 GT_SHADERS["ZoomRigthWipe"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float zoom_quickness = 0.8;
 // Author: Handk
 // License: MIT
 
@@ -3866,13 +3807,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["ZoomRigthWipe"]=[["zoom_quickness","float",0.8]];
 GT_SHADERS["angular"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float startingAngle = 90.0;
 // Author: Fernando Kuteken
 // License: MIT
 
@@ -3897,6 +3838,7 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["angular"]=[["startingAngle","float",90]];
 GT_SHADERS["burn"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
@@ -3922,7 +3864,6 @@ uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const vec3 burnColor = vec3(1.0,0.5,0.0);
 // Author: liubailin2020@gmail.com
 // License: MIT
 
@@ -3977,6 +3918,7 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["burn0"]=[["burnColor","vec3",[1,0.5,0]]];
 GT_SHADERS["cannabisleaf"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
@@ -4007,7 +3949,6 @@ uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float grid_num = 10.0;
 // Author: lql
 // License: MIT
 
@@ -4035,14 +3976,13 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["chessboard"]=[["grid_num","float",10]];
 GT_SHADERS["circle"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const vec2 center = vec2(0.5,0.5);
-const vec3 backColor = vec3(0.1,0.1,0.1);
 // Author: Fernando Kuteken
 // License: MIT
 
@@ -4065,14 +4005,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["circle"]=[["center","vec2",[0.5,0.5]],["backColor","vec3",[0.1,0.1,0.1]]];
 GT_SHADERS["circleopen"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float smoothness = 0.3;
-const bool opening = true;
 // Author: gre
 // License: MIT
 uniform float smoothness; // = 0.3
@@ -4089,14 +4028,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["circleopen"]=[["smoothness","float",0.3],["opening","bool",true]];
 GT_SHADERS["colorphase"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const vec4 fromStep = vec4(0.0,0.2,0.4,0.0);
-const vec4 toStep = vec4(0.6,0.8,1.0,1.0);
 // Author: gre
 // License: MIT
 
@@ -4114,6 +4052,7 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["colorphase"]=[["fromStep","vec4",[0,0.2,0.4,0]],["toStep","vec4",[0.6,0.8,1,1]]];
 GT_SHADERS["coord-from-in"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
@@ -4144,9 +4083,6 @@ uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const vec2 center = vec2(0.5,0.5);
-const float threshold = 3.0;
-const float fadeEdge = 0.1;
 // License: MIT
 // Author: pthrasher
 // adapted by gre from https://gist.github.com/pthrasher/04fd9a7de4012cbb03f6
@@ -4166,6 +4102,7 @@ vec4 transition(vec2 p) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["crosshatch"]=[["center","vec2",[0.5,0.5]],["threshold","float",3],["fadeEdge","float",0.1]];
 GT_SHADERS["crosswarp"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
@@ -4188,10 +4125,6 @@ uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float persp = 0.7;
-const float unzoom = 0.3;
-const float reflection = 0.4;
-const float floating = 3.0;
 // Author: gre
 // License: MIT
 uniform float persp; // = 0.7
@@ -4261,13 +4194,13 @@ vec4 transition(vec2 op) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["cube"]=[["persp","float",0.7],["unzoom","float",0.3],["reflection","float",0.4],["floating","float",3]];
 GT_SHADERS["directional-easing"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const vec2 direction = vec2(0.0,1.0);
 // Author: Max Plotnikov
 // License: MIT
 
@@ -4286,14 +4219,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["directional-easing"]=[["direction","vec2",[0,1]]];
 GT_SHADERS["directionalwarp"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float smoothness = 0.1;
-const vec2 direction = vec2(-1.0,1.0);
 // Author: pschroen
 // License: MIT
 
@@ -4312,14 +4244,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["directionalwarp"]=[["smoothness","float",0.1],["direction","vec2",[-1,1]]];
 GT_SHADERS["directionalwipe"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const vec2 direction = vec2(1.0,-1.0);
-const float smoothness = 0.5;
 // Author: gre
 // License: MIT
 
@@ -4340,13 +4271,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["directionalwipe"]=[["direction","vec2",[1,-1]],["smoothness","float",0.5]];
 GT_SHADERS["displacement"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float strength = 0.5;
 // Author: Travis Fischer
 // License: MIT
 //
@@ -4372,17 +4303,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["displacement"]=[["strength","float",0.5]];
 GT_SHADERS["dissolve"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float uLineWidth = 0.1;
-const vec3 uSpreadClr = vec3(1.0,0.0,0.0);
-const vec3 uHotClr = vec3(0.9,0.9,0.2);
-const float uPow = 5.0;
-const float uIntensity = 1.0;
 // Author: hjm1fb
 // License: MIT
 
@@ -4438,15 +4365,13 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["dissolve"]=[["uLineWidth","float",0.1],["uSpreadClr","vec3",[1,0,0]],["uHotClr","vec3",[0.9,0.9,0.2]],["uPow","float",5],["uIntensity","float",1]];
 GT_SHADERS["doorway"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float reflection = 0.4;
-const float perspective = 0.4;
-const float depth = 3.0;
 // Author: gre
 // License: MIT
 uniform float reflection; // = 0.4
@@ -4500,6 +4425,7 @@ vec4 transition (vec2 p) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["doorway"]=[["reflection","float",0.4],["perspective","float",0.4],["depth","float",3]];
 GT_SHADERS["fade"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
@@ -4525,8 +4451,6 @@ uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const vec3 color = vec3(0.0,0.0,0.0);
-const float colorPhase = 0.4;
 // Author: gre
 // License: MIT
 uniform vec3 color;// = vec3(0.0)
@@ -4540,13 +4464,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["fadecolor"]=[["color","vec3",[0,0,0]],["colorPhase","float",0.4]];
 GT_SHADERS["fadegrayscale"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float intensity = 0.3;
 // Author: gre
 // License: MIT
 
@@ -4567,15 +4491,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["fadegrayscale"]=[["intensity","float",0.3]];
 GT_SHADERS["flyeye"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float size = 0.04;
-const float zoom = 50.0;
-const float colorSeparation = 0.3;
 // Author: gre
 // License: MIT
 uniform float size; // = 0.04
@@ -4596,6 +4518,7 @@ vec4 transition(vec2 p) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["flyeye"]=[["size","float",0.04],["zoom","float",50],["colorSeparation","float",0.3]];
 GT_SHADERS["fragment"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
@@ -4687,8 +4610,6 @@ uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const int steps = 50;
-const float horizontalHexagons = 20.0;
 // Author: Fernando Kuteken
 // License: MIT
 // Hexagonal math from: http://www.redblobgames.com/grids/hexagons/
@@ -4766,15 +4687,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["hexagonalize"]=[["steps","int",50],["horizontalHexagons","float",20]];
 GT_SHADERS["kaleidoscope"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float speed = 1.0;
-const float angle = 1.0;
-const float power = 1.5;
 // Author: nwoeanhinnogaehr
 // License: MIT
 
@@ -4800,6 +4719,7 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["kaleidoscope"]=[["speed","float",1],["angle","float",1],["power","float",1.5]];
 GT_SHADERS["luma"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
@@ -4827,9 +4747,6 @@ uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const bool direction = false;
-const float l_threshold = 0.8;
-const bool above = false;
 // Author: 0gust1
 // License: MIT
 //My own first transition — based on crosshatch code (from pthrasher), using  simplex noise formula (copied and pasted)
@@ -4959,13 +4876,13 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["luminance_melt"]=[["direction","bool",false],["l_threshold","float",0.8],["above","bool",false]];
 GT_SHADERS["morph"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float strength = 0.1;
 // Author: paniq
 // License: MIT
 uniform float strength; // = 0.1
@@ -4985,13 +4902,13 @@ vec4 transition(vec2 p) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["morph"]=[["strength","float",0.1]];
 GT_SHADERS["mosaic_transition"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float mosaicNum = 10.0;
 // Author: YueDev
 // License: MIT
 
@@ -5011,6 +4928,7 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["mosaic_transition"]=[["mosaicNum","float",10]];
 GT_SHADERS["multiply_blend"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
@@ -5100,8 +5018,6 @@ uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float ampx = 1.0;
-const float ampy = 1.0;
 // Author: Yoni Maltsman @friendlyspinach
 // License: MIT
 
@@ -5129,15 +5045,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["parametric_glitch"]=[["ampx","float",1],["ampy","float",1]];
 GT_SHADERS["perlin"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float scale = 4.0;
-const float smoothness = 0.01;
-const float seed = 12.9898;
 // Author: Rich Harris
 // License: MIT
 
@@ -5204,13 +5118,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["perlin"]=[["scale","float",4],["smoothness","float",0.01],["seed","float",12.9898]];
 GT_SHADERS["pinwheel"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float speed = 2.0;
 // Author: Mr Speaker
 // License: MIT
 
@@ -5230,14 +5144,13 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["pinwheel"]=[["speed","float",2]];
 GT_SHADERS["pixelize"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const ivec2 squaresMin = ivec2(20,20);
-const int steps = 50;
 // Author: gre
 // License: MIT
 // forked from https://gist.github.com/benraziel/c528607361d90a072e98
@@ -5258,13 +5171,13 @@ vec4 transition(vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["pixelize"]=[["squaresMin","ivec2",[20,20]],["steps","int",50]];
 GT_SHADERS["polar_function"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const int segments = 5;
 // Author: Fernando Kuteken
 // License: MIT
 
@@ -5288,15 +5201,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["polar_function"]=[["segments","int",5]];
 GT_SHADERS["powerKaleido"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float scale = 2.0;
-const float z = 1.5;
-const float speed = 5.0;
 // Name: Power Kaleido
 // Author: Boundless
 // License: MIT
@@ -5354,6 +5265,7 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["powerKaleido"]=[["scale","float",2],["z","float",1.5],["speed","float",5]];
 GT_SHADERS["randomNoisex"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
@@ -5381,8 +5293,6 @@ uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const ivec2 size = ivec2(10,10);
-const float smoothness = 0.5;
 // Author: gre
 // License: MIT
 
@@ -5401,14 +5311,13 @@ vec4 transition(vec2 p) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["randomsquares"]=[["size","ivec2",[10,10]],["smoothness","float",0.5]];
 GT_SHADERS["ripple"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float amplitude = 100.0;
-const float speed = 50.0;
 // Author: gre
 // License: MIT
 uniform float amplitude; // = 100.0
@@ -5427,6 +5336,7 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["ripple"]=[["amplitude","float",100],["speed","float",50]];
 GT_SHADERS["rotateTransition"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
@@ -5461,10 +5371,6 @@ uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const vec2 center = vec2(0.5,0.5);
-const float rotations = 1.0;
-const float scale = 8.0;
-const vec4 backColor = vec4(0.15,0.15,0.15,1.0);
 // Author: Fernando Kuteken
 // License: MIT
 
@@ -5500,6 +5406,7 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["rotate_scale_fade"]=[["center","vec2",[0.5,0.5]],["rotations","float",1],["scale","float",8],["backColor","vec4",[0.15,0.15,0.15,1]]];
 GT_SHADERS["scale-in"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
@@ -5530,7 +5437,6 @@ uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const bool reverse = false;
 // Author: OllyOllyOlly
 // License: MIT
 
@@ -5556,13 +5462,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["splitSlideInHorizontal"]=[["reverse","bool",false]];
 GT_SHADERS["splitSlideInOutHorizontal"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const bool reverse = false;
 // Author: OllyOllyOlly
 // License: MIT
 
@@ -5585,13 +5491,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["splitSlideInOutHorizontal"]=[["reverse","bool",false]];
 GT_SHADERS["splitSlideInOutVertical"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const bool reverse = false;
 // Author: OllyOllyOlly
 // License: MIT
 
@@ -5614,13 +5520,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["splitSlideInOutVertical"]=[["reverse","bool",false]];
 GT_SHADERS["splitSlideInVertical"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const bool reverse = false;
 // Author: OllyOllyOlly
 // License: MIT
 
@@ -5644,13 +5550,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["splitSlideInVertical"]=[["reverse","bool",false]];
 GT_SHADERS["splitSlideOutHorizontal"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const bool reverse = false;
 // Author: OllyOllyOlly
 // License: MIT
 
@@ -5672,13 +5578,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["splitSlideOutHorizontal"]=[["reverse","bool",false]];
 GT_SHADERS["splitSlideOutVertical"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const bool reverse = false;
 // Author: OllyOllyOlly
 // License: MIT
 
@@ -5700,15 +5606,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["splitSlideOutVertical"]=[["reverse","bool",false]];
 GT_SHADERS["squareswire"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const ivec2 squares = ivec2(10,10);
-const vec2 direction = vec2(1.0,-0.5);
-const float smoothness = 1.6;
 // Author: gre
 // License: MIT
  
@@ -5732,13 +5636,13 @@ vec4 transition (vec2 p) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["squareswire"]=[["squares","ivec2",[10,10]],["direction","vec2",[1,-0.5]],["smoothness","float",1.6]];
 GT_SHADERS["squeeze"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float colorSeparation = 0.04;
 // Author: gre
 // License: MIT
  
@@ -5761,14 +5665,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["squeeze"]=[["colorSeparation","float",0.04]];
 GT_SHADERS["static_wipe"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const bool u_transitionUpToDown = true;
-const float u_max_static_span = 0.5;
 // Author: Ben Lucas
 // License: MIT
 
@@ -5806,15 +5709,13 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["static_wipe"]=[["u_transitionUpToDown","bool",true],["u_max_static_span","float",0.5]];
 GT_SHADERS["swap"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float reflection = 0.4;
-const float perspective = 0.2;
-const float depth = 3.0;
 // Author: gre
 // License: MIT
 // General parameters
@@ -5877,6 +5778,7 @@ vec4 transition(vec2 p) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["swap"]=[["reflection","float",0.4],["perspective","float",0.2],["depth","float",3]];
 GT_SHADERS["tangentMotionBlur"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
@@ -6029,9 +5931,6 @@ uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float smoothness = 0.03;
-const vec2 center = vec2(0.5,0.5);
-const vec3 color = vec3(0.0,0.0,0.0);
 // License: MIT
 // Author: pthrasher
 // adapted by gre from https://gist.github.com/pthrasher/8e6226b215548ba12734
@@ -6082,14 +5981,13 @@ vec4 transition(vec2 p) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["undulatingBurnOut"]=[["smoothness","float",0.03],["center","vec2",[0.5,0.5]],["color","vec3",[0,0,0]]];
 GT_SHADERS["wind"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float size = 0.2;
-const bool reversed = false;
 // Author: gre
 // License: MIT
 
@@ -6114,6 +6012,7 @@ vec4 transition (vec2 uv) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["wind"]=[["size","float",0.2],["reversed","bool",false]];
 GT_SHADERS["windowblinds"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
@@ -6144,8 +6043,6 @@ uniform sampler2D from, to;
 uniform float progress, ratio;
 vec4 getFromColor(vec2 uv){ return texture2D(from, uv); }
 vec4 getToColor(vec2 uv){ return texture2D(to, uv); }
-const float count = 10.0;
-const float smoothness = 0.5;
 // Author: gre
 // License: MIT
 
@@ -6160,6 +6057,7 @@ vec4 transition (vec2 p) {
 
 void main(){ gl_FragColor = transition(v_texCoord); }
 `;
+GT_PARAMS["windowslice"]=[["count","float",10],["smoothness","float",0.5]];
 GT_SHADERS["wipeDown"]=`precision highp float;
 varying vec2 v_texCoord;
 uniform sampler2D from, to;
@@ -6314,6 +6212,15 @@ function trMix(name,p,sg){
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D,TR.texTo); var lt=gl.getUniformLocation(prog,"to"); if(lt) gl.uniform1i(lt,1);
   var lp=gl.getUniformLocation(prog,"progress"); if(lp) gl.uniform1f(lp,Math.max(0,Math.min(1,p)));
   var lr=gl.getUniformLocation(prog,"ratio"); if(lr) gl.uniform1f(lr, base.width/base.height);
+  var defs=GT_PARAMS[name]; if(defs){ for(var di=0;di<defs.length;di++){ var pn=defs[di][0], ty=defs[di][1], v=defs[di][2], ul=gl.getUniformLocation(prog,pn); if(!ul) continue;
+    if(ty==="float") gl.uniform1f(ul, (v==null?0:v));
+    else if(ty==="int") gl.uniform1i(ul, (v==null?0:v|0));
+    else if(ty==="bool") gl.uniform1i(ul, v?1:0);
+    else if(ty==="vec2") gl.uniform2f(ul, v[0]||0, v[1]||0);
+    else if(ty==="vec3") gl.uniform3f(ul, v[0]||0, v[1]||0, v[2]||0);
+    else if(ty==="vec4") gl.uniform4f(ul, v[0]||0, v[1]||0, v[2]||0, v[3]||0);
+    else if(ty==="ivec2") gl.uniform2i(ul, (v[0]||0)|0, (v[1]||0)|0);
+  } }
   gl.drawArrays(gl.TRIANGLES,0,6);
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D,null); gl.activeTexture(gl.TEXTURE0);
   gl.bindFramebuffer(gl.FRAMEBUFFER,null); return true;
