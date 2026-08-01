@@ -211,6 +211,7 @@ function snapKick(t){ if(!A||!A.kEnv||!A.efps) return t; var f=A.efps, i=Math.ro
   for(var k=i-w;k<=i+w;k++){ if(k<0||k>=A.kEnv.length) continue; if(A.kEnv[k]>bv){ bv=A.kEnv[k]; bk=k; } } return bk/f; }
 function buildPartition(){
   SEGS=[]; stripDirty=true; if(!A||!A.beats||A.beats.length<2) return;
+  if(glReady && TR.ready) trCompileAll();
   var M=MOODS[MOOD], beats=A.beats, str=A.strength||[], dur=A.dur;
   /* INVERSION : parmi les temps de [min,max] secondes, on prend le PLUS FORT.
      -> chaque coupe tombe sur un accent réel ; jamais de seconde arbitraire. */
@@ -6271,9 +6272,10 @@ void main(){ gl_FragColor = transition(v_texCoord); }
 var GT_NAMES=["AdvancedMosaic","BlockDissolve","BookFlip","Bounce","BowTieHorizontal","BowTieVertical","BowTieWithParameter","Box","ButterflyWaveScrawler","CircleCrop","ColourDistance","CrazyParametricFun","CrossZoom","DefocusBlur","Directional","DirectionalScaled","DoomScreenTransition","Dreamy","DreamyZoom","Drop_Zone_Flicker","EdgeTransition","FilmBurn","Fold","GlitchDisplace","GlitchMemories","GridFlip","HSVfade","HorizontalClose","HorizontalOpen","InvertedPageCurl","LeftRight","LinearBlur","Mosaic","Overexposure","PolkaDotsCurtain","PuzzleRight","Radial","Rectangle","RectangleCrop","Revolve_Left","Rolls","RotateScaleVanish","SimpleFlip","SimpleZoom","SimpleZoomOut","Slides","StarWipe","StaticFade","StereoViewer","StripDatamoshGlitch","Swirl","TVStatic","TilesWave","TopBottom","VerticalClose","VerticalOpen","WaterDrop","ZoomInCircles","ZoomLeftWipe","ZoomRigthWipe","angular","burn","burn0","cannabisleaf","chessboard","circle","circleopen","colorphase","coord-from-in","crosshatch","crosswarp","cube","directional-easing","directionalwarp","directionalwipe","displacement","dissolve","doorway","fade","fadecolor","fadegrayscale","flyeye","fragment","heart","hexagonalize","kaleidoscope","luma","luminance_melt","morph","mosaic_transition","multiply_blend","old_tv_lost_signal","parametric_glitch","perlin","pinwheel","pixelize","polar_function","powerKaleido","randomNoisex","randomsquares","ripple","rotateTransition","rotate_scale_fade","scale-in","splitSlideInHorizontal","splitSlideInOutHorizontal","splitSlideInOutVertical","splitSlideInVertical","splitSlideOutHorizontal","splitSlideOutVertical","squareswire","squeeze","static_wipe","swap","tangentMotionBlur","undulatingBurnOut","wind","windowblinds","windowslice","wipeDown","wipeLeft","wipeRight","wipeUp","x_axis_translation","zoomInOut"];
 var GT_CALM=["fade","CrossZoom","LinearBlur","SimpleZoom","circle","ColourDistance","GridFlip"];
 var TR_DUR={}; GT_NAMES.forEach(function(n){ TR_DUR[n]=0.5; });
-var TR={ready:false,progs:{},quad:null,texFrom:null,texTo:null,fbo:null};
+var TR={ready:false,progs:{},okNames:null,quad:null,texFrom:null,texTo:null,fbo:null};
 function trTex(){ var t=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,t); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR); return t; }
 function trProgGT(fsrc){ var vs=compile(gl,gl.VERTEX_SHADER,GTVS), fs=compile(gl,gl.FRAGMENT_SHADER,fsrc); if(!vs||!fs) return null; var p=gl.createProgram(); gl.attachShader(p,vs); gl.attachShader(p,fs); gl.linkProgram(p); if(!gl.getProgramParameter(p,gl.LINK_STATUS)){ return null; } return p; }
+function trCompileAll(){ if(TR.okNames||!gl||!TR.ready) return; TR.okNames=[]; for(var i=0;i<GT_NAMES.length;i++){ var n=GT_NAMES[i]; if(trGet(n)) TR.okNames.push(n); } if(!TR.okNames.length) TR.okNames=null; }
 function trGet(name){ if(!name) return null; if(Object.prototype.hasOwnProperty.call(TR.progs,name)) return TR.progs[name]; var src=GT_SHADERS[name]; if(!src){ TR.progs[name]=null; return null; } var pr=trProgGT(src); TR.progs[name]=pr||null; return TR.progs[name]; }
 function initTransitions(){ TR.ready=false; if(!gl) return;
   try{
@@ -6288,7 +6290,7 @@ function initTransitions(){ TR.ready=false; if(!gl) return;
 }
 function trUpload(tex){ gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,tex); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,base); }
 function trMix(name,p,sg){
-  var prog=trGet(name); if(!prog) prog=trGet("fade"); if(!prog) return false;
+  var prog=trGet(name); if(!prog) prog=trGet("fade"); if(!prog && TR.okNames && TR.okNames.length) prog=trGet(TR.okNames[0]); if(!prog) return false;
   gl.bindFramebuffer(gl.FRAMEBUFFER,TR.fbo.fb); gl.viewport(0,0,TR.fbo.w,TR.fbo.h);
   gl.useProgram(prog); gl.bindBuffer(gl.ARRAY_BUFFER,TR.quad);
   var aP=gl.getAttribLocation(prog,"a_position"); gl.enableVertexAttribArray(aP); gl.vertexAttribPointer(aP,2,gl.FLOAT,false,0,0);
@@ -6301,9 +6303,10 @@ function trMix(name,p,sg){
   gl.bindFramebuffer(gl.FRAMEBUFFER,null); return true;
 }
 function gtChoose(idx,sg,prev,photos,energy,mood){
-  if(energy<0.22 && GT_CALM.length) return GT_CALM[idx%GT_CALM.length];
-  var t=GT_NAMES[(idx*7+3)%GT_NAMES.length];
-  if(prev && prev.trans===t) t=GT_NAMES[(idx*7+8)%GT_NAMES.length];
+  var pool=(TR.okNames && TR.okNames.length)?TR.okNames:GT_NAMES;
+  if(energy<0.22){ var calm=GT_CALM.filter(function(n){ return pool.indexOf(n)>=0; }); if(calm.length) return calm[idx%calm.length]; }
+  var t=pool[(idx*7+3)%pool.length];
+  if(prev && prev.trans===t) t=pool[(idx*7+8)%pool.length];
   return t;
 }
 function initGL(){
@@ -6374,7 +6377,7 @@ function loop(){
   var TRd=Math.min((TR_DUR[trName]!=null?TR_DUR[trName]:0),(sg?(sg.end-sg.start)*0.5:0));
   var inTrans=(sg&&prev&&TRd>0&&into<TRd&&trName!=="cut"&&trName!=="none");
   var strongPulse=(sg&&sg.strong&&into<0.10)?(1-into/0.10):0;
-  if(glReady && TR.ready && inTrans && trGet(trName)){
+  if(glReady && TR.ready && inTrans){
     drawSegAt(prev,prev.end-0.001,0,1); trUpload(TR.texFrom);
     drawSegAt(sg,t,0,1); trUpload(TR.texTo);
     trMix(trName,into/TRd,sg);
