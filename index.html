@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
-<title>Test overlays — Magot</title>
+<title>Test overlays — sans dossier</title>
 <style>
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;background:#0a1024;color:#eef2f9;font:15px/1.4 -apple-system,system-ui,sans-serif}
@@ -14,93 +14,117 @@
   #bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:linear-gradient(160deg,#12233f,#274a6b 45%,#7c6a52 80%,#c9a06a)}
   #ov{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;mix-blend-mode:screen;opacity:0}
   .cap{position:absolute;left:10px;bottom:10px;z-index:3;background:rgba(6,12,26,.55);border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:4px 9px;font:600 11px system-ui;color:#dfe7f6}
-  .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px}
-  .btn{border:1px solid #26345c;background:#141d3a;color:#eaf0fb;border-radius:11px;padding:12px 6px;font:600 13px system-ui;cursor:pointer;text-align:center}
-  .btn:active{transform:translateY(1px)}
-  .btn.on{background:#E0A33E;color:#241603;border-color:#E0A33E}
-  .btn.wide{grid-column:1 / -1}
-  .btn.stop{grid-column:1 / -1;background:#3a1420;border-color:#5c2130}
-  .seg{display:flex;gap:6px;margin-top:10px}
-  .seg button{flex:1;border:1px solid #26345c;background:#111a34;color:#c7d3ee;border-radius:9px;padding:9px 4px;font:600 12px system-ui}
-  .seg button.on{background:#E0A33E;color:#241603;border-color:#E0A33E}
-  .synb{display:flex;align-items:center;gap:10px;margin-top:10px;background:#101a34;border:1px solid #223258;border-radius:11px;padding:10px 12px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+  .slot{border:1px solid #26345c;background:#141d3a;border-radius:11px;padding:10px;display:flex;flex-direction:column;gap:7px}
+  .slot .nm{font:600 13px system-ui;color:#eaf0fb}
+  .slot .st{font:600 11px ui-monospace,monospace;color:#7d8cae}
+  .slot.loaded{border-color:#2f7d52}
+  .slot.loaded .st{color:#7bd88f}
+  .slot.playing{border-color:#E0A33E;background:#1c2038}
+  .mini{display:flex;gap:6px}
+  .mini button{flex:1;border:1px solid #2a3a63;background:#111a34;color:#cdd8f2;border-radius:8px;padding:8px 4px;font:600 12px system-ui}
+  .mini button.play{background:#E0A33E;color:#241603;border-color:#E0A33E}
+  .synb{display:flex;align-items:center;gap:10px;margin-top:12px;background:#101a34;border:1px solid #223258;border-radius:11px;padding:10px 12px}
   .synb label{font:600 12px system-ui;color:#c7d3ee;white-space:nowrap}
   .synb input[type=range]{flex:1;accent-color:#E0A33E}
   .synb .val{font:600 12px system-ui;color:#E0A33E;width:52px;text-align:right}
+  .seg{display:flex;gap:6px;margin-top:10px}
+  .seg button{flex:1;border:1px solid #26345c;background:#111a34;color:#c7d3ee;border-radius:9px;padding:9px 4px;font:600 12px system-ui}
+  .seg button.on{background:#E0A33E;color:#241603;border-color:#E0A33E}
+  .btn{width:100%;border:1px solid #26345c;background:#141d3a;color:#eaf0fb;border-radius:11px;padding:13px;font:600 14px system-ui;margin-top:10px}
+  .btn.stop{background:#3a1420;border-color:#5c2130}
   .hint{color:#7d8cae;font-size:12px;margin-top:12px;line-height:1.55}
   input[type=file]{display:none}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Test overlays vidéo — Magot</h1>
-  <p class="sub">Charge une photo, puis tape un effet. Il lit <b>overlays/&lt;nom&gt;.mp4</b> de ton repo et le fusionne en « écran » (le noir disparaît).</p>
+  <h1>Test overlays — sans dossier</h1>
+  <p class="sub">Aucun dossier à créer. Charge une photo, charge chaque vidéo depuis Fichiers, puis appuie sur ▶ pour la voir fusionnée en « écran ».</p>
   <div class="stage">
     <img id="bg" alt="">
     <video id="ov" playsinline loop muted webkit-playsinline></video>
     <div class="cap" id="cap">—</div>
   </div>
 
-  <div class="grid">
-    <button class="btn" data-o="snow">❄️ Neige</button>
-    <button class="btn" data-o="rain">🌧️ Pluie</button>
-    <button class="btn" data-o="fire">🔥 Feu</button>
-    <button class="btn" data-o="bokeh">🌟 Bokeh</button>
-    <button class="btn" data-o="lightleak">💡 Fuite lum.</button>
-    <button class="btn" data-o="dust">🌫️ Poussière</button>
-  </div>
+  <button class="btn" id="pickPhoto">🖼️ Charger une photo de fond</button>
+
+  <div class="grid" id="slots"></div>
 
   <div class="synb">
     <label>Intensité</label>
     <input type="range" id="amt" min="0" max="100" step="5" value="85">
     <span class="val" id="amtVal">85 %</span>
   </div>
-
   <div class="seg" id="blend">
     <button data-b="screen" class="on">Écran</button>
     <button data-b="lighten">Éclaircir</button>
     <button data-b="plus-lighter">Additif</button>
   </div>
 
-  <div class="grid">
-    <button class="btn wide" id="pickPhoto">🖼️ Charger une photo</button>
-    <button class="btn stop" id="stop">■ Retirer l'effet</button>
-  </div>
+  <button class="btn stop" id="stop">■ Retirer l'effet</button>
+  <div id="log" class="hint">Charge tes vidéos une par une (neige, feu, etc.). Une fois chargées, tape ▶ pour comparer. L'ordre n'a pas d'importance.</div>
 
-  <div id="log" class="hint">Dépose tes fichiers dans <b>overlays/</b> : snow.mp4, rain.mp4, fire.mp4, bokeh.mp4, lightleak.mp4, dust.mp4. Commence avec 2-3 pour tester.</div>
   <input type="file" id="fPhoto" accept="image/*">
+  <input type="file" id="fVid" accept="video/*">
 </div>
 <script>
 "use strict";
 var bg=document.getElementById("bg"), ov=document.getElementById("ov"), cap=document.getElementById("cap"), log=document.getElementById("log");
 var amt=document.getElementById("amt"), amtVal=document.getElementById("amtVal");
-var photoURL="", current=null;
+var slotsEl=document.getElementById("slots");
 function say(s){ log.innerHTML=s; }
 function amount(){ return (+amt.value)/100; }
 
-var btns=document.querySelectorAll(".btn[data-o]");
-function setActive(name){ for(var i=0;i<btns.length;i++){ btns[i].classList.toggle("on", btns[i].getAttribute("data-o")===name); } }
+var EFFECTS=[
+  {key:"snow", label:"\u2744\ufe0f Neige"}, {key:"fire", label:"\ud83d\udd25 Feu"},
+  {key:"dust", label:"\ud83c\udf1f Poussi\u00e8re"}, {key:"bokeh", label:"\ud83c\udf2b\ufe0f Bokeh"},
+  {key:"lightleak", label:"\ud83d\udca1 Fuite lum."}, {key:"embers", label:"\u2728 Braises"},
+  {key:"rain", label:"\ud83c\udf27\ufe0f Pluie"}, {key:"autre", label:"\u2795 Autre"}
+];
+var urls={}, photoURL="", pendingSlot=null, playingKey=null;
 
-function playOverlay(name){
-  current=name; setActive(name);
-  cap.textContent="Chargement "+name+"…";
-  ov.style.opacity="0";
-  ov.onerror=function(){ setActive(""); current=null; cap.textContent="fichier manquant"; say("❌ <b>overlays/"+name+".mp4</b> introuvable. Dépose le fichier dans le dossier <b>overlays/</b> de ton repo (nom exact)."); };
-  ov.oncanplay=function(){ ov.oncanplay=null; };
-  ov.src="overlays/"+name+".mp4";
-  ov.load();
+EFFECTS.forEach(function(e){
+  var d=document.createElement("div"); d.className="slot"; d.id="slot-"+e.key;
+  d.innerHTML='<div class="nm">'+e.label+'</div><div class="st">non charg\u00e9</div>'+
+    '<div class="mini"><button data-load="'+e.key+'">Charger</button><button data-play="'+e.key+'" class="play">\u25b6</button></div>';
+  slotsEl.appendChild(d);
+});
+
+slotsEl.addEventListener("click", function(ev){
+  var t=ev.target;
+  var lk=t.getAttribute("data-load"); var pk=t.getAttribute("data-play");
+  if(lk){ pendingSlot=lk; document.getElementById("fVid").click(); }
+  if(pk){ playKey(pk); }
+});
+
+document.getElementById("fVid").onchange=function(e){
+  var f=e.target.files&&e.target.files[0]; e.target.value="";
+  if(!f||!pendingSlot) return;
+  var key=pendingSlot; pendingSlot=null;
+  try{ if(urls[key]) URL.revokeObjectURL(urls[key]); }catch(x){}
+  urls[key]=URL.createObjectURL(f);
+  var slot=document.getElementById("slot-"+key);
+  slot.classList.add("loaded"); slot.querySelector(".st").textContent="charg\u00e9 \u2714";
+  say("\u00ab "+key+" \u00bb charg\u00e9. Tape \u25b6 pour le voir.");
+  playKey(key);
+};
+
+function playKey(key){
+  if(!urls[key]){ say("\u00ab "+key+" \u00bb n'est pas encore charg\u00e9 \u2014 tape \u00ab Charger \u00bb."); return; }
+  playingKey=key;
+  var s=document.querySelectorAll(".slot"); for(var i=0;i<s.length;i++) s[i].classList.remove("playing");
+  document.getElementById("slot-"+key).classList.add("playing");
+  ov.style.opacity="0"; ov.src=urls[key]; ov.load();
   var pr=ov.play();
-  if(pr&&pr.then){ pr.then(function(){ ov.style.opacity=String(amount()); cap.textContent=name+" ✔"; say("overlay <b>"+name+"</b> ✔ — mode écran. Règle l'intensité et compare les modes de fusion."); })
-                     .catch(function(err){ cap.textContent="lecture bloquée"; say("lecture bloquée : "+err+" — retape le bouton."); }); }
-  else { ov.style.opacity=String(amount()); }
+  if(pr&&pr.then){ pr.then(function(){ ov.style.opacity=String(amount()); cap.textContent=key+" \u2714"; })
+                     .catch(function(err){ cap.textContent="lecture bloqu\u00e9e"; say("lecture bloqu\u00e9e : "+err+" \u2014 retape \u25b6."); }); }
+  else { ov.style.opacity=String(amount()); cap.textContent=key+" \u2714"; }
 }
 
-for(var i=0;i<btns.length;i++){ (function(b){ b.onclick=function(){ playOverlay(b.getAttribute("data-o")); }; })(btns[i]); }
+document.getElementById("stop").onclick=function(){ ov.pause(); ov.removeAttribute("src"); ov.load(); ov.style.opacity="0"; cap.textContent="\u2014"; playingKey=null; var s=document.querySelectorAll(".slot"); for(var i=0;i<s.length;i++) s[i].classList.remove("playing"); say("effet retir\u00e9."); };
 
-document.getElementById("stop").onclick=function(){ ov.pause(); ov.removeAttribute("src"); ov.load(); ov.style.opacity="0"; setActive(""); current=null; cap.textContent="—"; say("effet retiré."); };
-
-amt.oninput=function(){ amtVal.textContent=amt.value+" %"; if(current) ov.style.opacity=String(amount()); };
-
+amt.oninput=function(){ amtVal.textContent=amt.value+" %"; if(playingKey) ov.style.opacity=String(amount()); };
 var seg=document.querySelectorAll("#blend button");
 for(var j=0;j<seg.length;j++){ (function(b){ b.onclick=function(){ for(var k=0;k<seg.length;k++) seg[k].classList.remove("on"); b.classList.add("on"); ov.style.mixBlendMode=b.getAttribute("data-b"); }; })(seg[j]); }
 
