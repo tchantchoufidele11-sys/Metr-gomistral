@@ -86,6 +86,7 @@
   </div>
 
   <div id="state" class="hint"></div>
+  <div id="thumbs" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px"></div>
   <p class="hint">La bande montre les temps (dorés = temps forts) et les points de coupe. La tête de lecture blanche doit croiser une coupe pile quand la photo change. S'il reste un décalage, ajuste le curseur <b>Sync</b> pendant la lecture.</p>
 
   <input type="file" id="fMusic">
@@ -6552,7 +6553,7 @@ document.getElementById("pickMusic").onclick=function(){ ensureAudio(); document
 document.getElementById("pickPhotos").onclick=function(){ document.getElementById("fPhotos").click(); };
 document.getElementById("play").onclick=function(){ var self=this; ensureAudio(); if(playing){ stopPlay(); self.textContent="▶ Reprendre"; } else { startPlay(); setTimeout(function(){ if(playing) self.textContent="⏸ Pause"; },30); } };
 document.getElementById("restart").onclick=function(){ if(!A||!PHOTOS.length) return; pausedOffset=0; buildPartition(); stopPlay(); startPlay(); setTimeout(function(){ if(playing) document.getElementById("play").textContent="⏸ Pause"; },30); };
-document.getElementById("clear").onclick=function(){ stopPlay(); PHOTOS.forEach(function(p){ try{URL.revokeObjectURL(p.url);}catch(e){} }); PHOTOS=[]; SEGS=[]; A=null; AUDIOBUF=null; pausedOffset=0; stripDirty=true; document.getElementById("empty").style.display="flex"; resetBtn(); setState(""); updateBadge(); paintStrip(0); bctx.clearRect(0,0,base.width,base.height); if(glReady){ gl.clear(gl.COLOR_BUFFER_BIT); } };
+document.getElementById("clear").onclick=function(){ stopPlay(); PHOTOS.forEach(function(p){ try{URL.revokeObjectURL(p.url);}catch(e){} }); PHOTOS=[]; SEGS=[]; A=null; AUDIOBUF=null; pausedOffset=0; stripDirty=true; (function(){ var te=document.getElementById("thumbs"); if(te) te.innerHTML=""; })(); document.getElementById("empty").style.display="flex"; resetBtn(); setState(""); updateBadge(); paintStrip(0); bctx.clearRect(0,0,base.width,base.height); if(glReady){ gl.clear(gl.COLOR_BUFFER_BIT); } };
 ovVid=document.getElementById("ovlVid");
 var ovlFile=document.getElementById("ovlFile"), ovlAmt=document.getElementById("ovlAmt");
 document.getElementById("ovlLoad").onclick=function(){ ovlFile.click(); };
@@ -6614,10 +6615,11 @@ function finishAnalyze(){
 document.getElementById("fPhotos").onchange=function(e){
   var files=Array.prototype.slice.call(e.target.files||[]); if(!files.length) return;
   e.target.value="";
-  var total=files.length, done=0, idx=0, CONC=3;
+  var total=files.length, done=0, idx=0, CONC=4;
   setState("Ajout des photos… 0/"+total);
   var after=function(){ if(A) buildPartition(); updateBadge(); setState(PHOTOS.length+" photos chargées."); if(A&&PHOTOS.length) paintStrip(playing?visualTime():0); };
-  function add(src){ try{ var c=prerender(src); var _ft=photoFeat(c); PHOTOS.push({img:c,c:c,url:null,lum:_ft.lum,feat:_ft}); if(src&&src.close){ try{ src.close(); }catch(x){} } }catch(x){} }
+  function addThumb(c){ var el=document.getElementById("thumbs"); if(!el||!c) return; var tw=108, th=Math.max(1,Math.round(tw*(c.height||1)/(c.width||1))); var tc=document.createElement("canvas"); tc.width=tw; tc.height=th; try{ tc.getContext("2d").drawImage(c,0,0,tw,th); }catch(e){} tc.style.cssText="width:52px;height:auto;border-radius:6px;display:block;box-shadow:0 1px 3px rgba(0,0,0,.4)"; el.appendChild(tc); }
+  function add(src){ try{ var c=prerender(src); var _ft=photoFeat(c); PHOTOS.push({img:c,c:c,url:null,lum:_ft.lum,feat:_ft}); addThumb(c); if(src&&src.close){ try{ src.close(); }catch(x){} } }catch(x){} }
   function finishOne(){ done++; setState("Ajout des photos… "+done+"/"+total); if(done>=total){ after(); } else { startNext(); } }
   function startNext(){
     if(idx>=total) return; var file=files[idx++];
