@@ -6325,10 +6325,11 @@ function gtChoose(idx,sg,prev,photos,energy,mood){
     else prefs=["CrossZoom","SimpleZoom","DirectionalScaled","cube","Radial"];
   }
   var modeLot=(MODE_TRANS[mood]||[]).concat(MODE_TRANS._universal||[]);
+  var tierNames=TIERS[tier]||TIERS.subtle;
+  var modeTier=modeLot.filter(function(n){ return tierNames.indexOf(n)>=0; });   /* transitions du mode DU BON REGISTRE (sobre/élégant/spectaculaire) */
   var prefsInLot=prefs.filter(function(n){ return modeLot.indexOf(n)>=0; });
-  /* le mode pioche DANS SON LOT d'abord (image/musique affine) ; 1 sur 3 = variété dans le lot ;
-     le réservoir général des 125 ne sort que lorsque le lot du mode est épuisé (panier sans répétition) */
-  var order=(k%3===0)?[modeLot, prefsInLot, GT_NAMES]:[prefsInLot, modeLot, GT_NAMES];
+  /* registre d'abord (garde le beat qui claque : surtout sobre) ; puis le lot du mode ; puis le réservoir général — panier sans répétition */
+  var order=(k%3===0)?[modeTier, modeLot, GT_NAMES]:[prefsInLot, modeTier, modeLot, GT_NAMES];
   var name=bagPick(order, k);
   sg.trDur=prof.dur;
   return name;
