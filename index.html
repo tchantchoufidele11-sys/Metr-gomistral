@@ -113,6 +113,12 @@ var essentiaReady=new Promise(function(resolve){
 });
 
 /* ================= Ambiances (hold = nombre entier de temps) ================= */
+var MODE_BEATS={
+  cinema:{min:4, tgt:6, max:9},
+  doux:{min:6, tgt:8, max:12},
+  dynamique:{min:2, tgt:3, max:4.5},
+  voyage:{min:3, tgt:5, max:7}
+};
 var MOODS={
   cinema:{minSec:2.0, tgtSec:2.8, maxSec:4.0, accent:0.50, grade:{expo:0.02,contrast:0.12,sat:-0.04,temp:0.16,vig:0.36,grain:0.02,leak:0.10}, kb:0.10, punch:0.055, fx:{chromatic:0,bloom:0.10,halation:0.10,anamorphic:0,dust:0,scanlines:0,shutter:0,lensFlare:0}},
   doux:{minSec:2.6, tgtSec:3.6, maxSec:5.0, accent:0.58, grade:{expo:0.05,contrast:0.02,sat:0.06,temp:0.22,vig:0.20,grain:0.02,leak:0.20}, kb:0.06, punch:0.035, fx:{chromatic:0,bloom:0.18,halation:0.15,anamorphic:0,dust:0,scanlines:0,shutter:0,lensFlare:0}},
@@ -222,11 +228,16 @@ function buildPartition(){
   if(glReady && TR.ready){ trCompileAll(); atmCompileAll(); }
   trReset(); atmReset();
   var M=MOODS[MOOD], beats=A.beats, str=A.strength||[], dur=A.dur;
+  var BPM=(A.bpm&&A.bpm>0)?A.bpm:110, beatDur=60/BPM;
+  var BW=MODE_BEATS[MOOD]||MODE_BEATS.cinema;
+  function _cl(v){ return Math.max(1.2, Math.min(6.0, v)); }
+  var cMin=_cl(BW.min*beatDur), cTgt=_cl(BW.tgt*beatDur), cMax=_cl(BW.max*beatDur);
+  if(cMax<=cMin) cMax=cMin+0.6; if(cTgt<cMin) cTgt=cMin; if(cTgt>cMax) cTgt=cMax;
   /* INVERSION : parmi les temps de [min,max] secondes, on prend le PLUS FORT.
      -> chaque coupe tombe sur un accent réel ; jamais de seconde arbitraire. */
-  var cuts=[], lastCut=0, bi=0, gi=0, span=(M.maxSec-M.minSec)||1;
+  var cuts=[], lastCut=0, bi=0, gi=0, span=(cMax-cMin)||1;
   while(gi++<20000){
-    var lo=lastCut+M.minSec, hi=lastCut+M.maxSec, tgt=lastCut+M.tgtSec;
+    var lo=lastCut+cMin, hi=lastCut+cMax, tgt=lastCut+cTgt;
     while(bi<beats.length && beats[bi]<lo) bi++;
     if(bi>=beats.length) break;
     var eLoc=energyAt(lastCut);
@@ -266,7 +277,7 @@ function buildPartition(){
 
 /* ================= Rendu 2D ================= */
 var base=document.getElementById("base"), bctx=base.getContext("2d");
-function prerender(img){ try{ var maxD=1400, w=img.width,h=img.height, sc=Math.min(1,maxD/Math.max(w,h,1)); var cw=Math.max(1,Math.round(w*sc)), ch=Math.max(1,Math.round(h*sc)); var c=document.createElement("canvas"); c.width=cw; c.height=ch; c.getContext("2d").drawImage(img,0,0,cw,ch); return c; }catch(e){ return img; } }
+function prerender(img){ try{ var maxD=1280, w=img.width,h=img.height, sc=Math.min(1,maxD/Math.max(w,h,1)); var cw=Math.max(1,Math.round(w*sc)), ch=Math.max(1,Math.round(h*sc)); var c=document.createElement("canvas"); c.width=cw; c.height=ch; c.getContext("2d").drawImage(img,0,0,cw,ch); return c; }catch(e){ return img; } }
 function photoFeat(img){
   try{
     var c=document.createElement("canvas"); c.width=16; c.height=16; var x=c.getContext("2d"); x.drawImage(img,0,0,16,16);
@@ -6277,7 +6288,9 @@ function gtChoose(idx,sg,prev,photos,energy,mood){
   var dL=Math.abs(A2.lum-B.lum), dW=Math.abs(A2.warm-B.warm);
   var bothLand=(!A2.portrait&&!B.portrait), similar=(dL<0.14&&dW<0.10), portrait=(A2.portrait||B.portrait);
   var prof=MOODTRANS[mood]||MOODTRANS.cinema;
-  var specAllowed=(mood==="dynamique"?0.28:(mood==="cinema"?0.05:(mood==="voyage"?0.06:0.0)));
+  var _bd=(A&&A.bpm>0)?60/A.bpm:0.5, _tf=Math.max(0.6,Math.min(1.5,_bd/0.5));
+  var _fast=(A&&A.bpm>135)?1.4:((A&&A.bpm<95)?0.6:1.0);
+  var specAllowed=(mood==="dynamique"?0.28:(mood==="cinema"?0.05:(mood==="voyage"?0.06:0.0)))*_fast;
   var tier;
   if(e<0.25) tier="subtle";
   else if(strong && e>0.72 && specAllowed>0 && ((k*0.618)%1)<specAllowed*3) tier="spectacular";
@@ -6296,7 +6309,7 @@ function gtChoose(idx,sg,prev,photos,energy,mood){
     else prefs=["CrossZoom","SimpleZoom","DirectionalScaled","cube","Radial"];
   }
   var name=bagPick([prefs, TIERS[tier]||TIERS.subtle, GT_NAMES], k);
-  sg.trDur=prof.dur;
+  sg.trDur=prof.dur*_tf;   /* transition plus courte si tempo rapide, plus longue si lent */
   return name;
 }
 /* ==== Effets atmospheriques : shaders GPU proceduraux, dans le pipeline (panier + scene) ==== */
@@ -6545,12 +6558,19 @@ function finishAnalyze(){
 
 document.getElementById("fPhotos").onchange=function(e){
   var files=Array.prototype.slice.call(e.target.files||[]); if(!files.length) return;
-  var pending=files.length;
-  var after=function(){ if(A) buildPartition(); updateBadge(); setState(PHOTOS.length+" photos chargées."); if(A&&PHOTOS.length) paintStrip(playing?visualTime():0); };
-  files.forEach(function(file){ var url=URL.createObjectURL(file); var img=new Image();
-    img.onload=function(){ var _ft=photoFeat(img); PHOTOS.push({img:img,c:prerender(img),url:url,lum:_ft.lum,feat:_ft}); if(--pending===0) after(); };
-    img.onerror=function(){ if(--pending===0) after(); }; img.src=url; });
   e.target.value="";
+  var total=files.length, done=0, idx=0, CONC=3;
+  setState("Ajout des photos… 0/"+total);
+  var after=function(){ if(A) buildPartition(); updateBadge(); setState(PHOTOS.length+" photos chargées."); if(A&&PHOTOS.length) paintStrip(playing?visualTime():0); };
+  function add(src){ try{ var c=prerender(src); var _ft=photoFeat(c); PHOTOS.push({img:c,c:c,url:null,lum:_ft.lum,feat:_ft}); if(src&&src.close){ try{ src.close(); }catch(x){} } }catch(x){} }
+  function finishOne(){ done++; setState("Ajout des photos… "+done+"/"+total); if(done>=total){ after(); } else { startNext(); } }
+  function startNext(){
+    if(idx>=total) return; var file=files[idx++];
+    var fallback=function(){ var url=URL.createObjectURL(file); var img=new Image(); img.onload=function(){ add(img); try{ URL.revokeObjectURL(url); }catch(x){} finishOne(); }; img.onerror=function(){ try{ URL.revokeObjectURL(url); }catch(x){} finishOne(); }; img.src=url; };
+    if(window.createImageBitmap){ createImageBitmap(file).then(function(bmp){ add(bmp); finishOne(); }).catch(fallback); }
+    else fallback();
+  }
+  for(var k=0;k<Math.min(CONC,total);k++) startNext();
 };
 
 /* init */
