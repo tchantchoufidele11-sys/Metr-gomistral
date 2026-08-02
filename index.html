@@ -6443,7 +6443,7 @@ function initGL(){
   try{ gl=cv.getContext("webgl")||cv.getContext("experimental-webgl"); }catch(e){ gl=null; }
   if(!gl){ document.getElementById("base").style.visibility="visible"; document.getElementById("gl").style.display="none"; return false; }
   if(!initGL._h){ initGL._h=true;
-    cv.addEventListener("webglcontextlost",function(e){ e.preventDefault(); glReady=false; },false);
+    cv.addEventListener("webglcontextlost",function(e){ e.preventDefault(); glReady=false; try{ document.getElementById("base").style.visibility="visible"; document.getElementById("gl").style.display="none"; }catch(x){} },false);
     cv.addEventListener("webglcontextrestored",function(){ initGL(); },false);
   }
   var vs=compile(gl,gl.VERTEX_SHADER,VS), fs=compile(gl,gl.FRAGMENT_SHADER,FS);
@@ -6459,7 +6459,7 @@ function initGL(){
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
   ["uTime","uResolution","uGrain","uVig","uExpo","uContrast","uSat","uTemp","uLeak","uPulse","uChromatic","uBloom","uHalation","uAnamorphic","uDust","uScanlines","uShutter","uLensFlare","uFlareX","uFlareY","uOverlayAmt","uOverlayOn"].forEach(function(n){ glU[n]=gl.getUniformLocation(glProg,n); });
-  glReady=true; initTransitions(); return true;
+  glReady=true; try{ var _g=document.getElementById("gl"); if(_g) _g.style.display=""; }catch(x){} initTransitions(); return true;
 }
 function drawGL(time,pulse,srcTex){
   if(!glReady) return; var G=MOODS[MOOD].grade, F=MOODS[MOOD].fx||{};
