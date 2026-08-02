@@ -225,6 +225,25 @@ function analyzeCustom(audio){
 function energyAt(t){ if(!A||!A.energy||!A.fps) return 0.5; var i=Math.round(t*A.fps); return A.energy[Math.max(0,Math.min(A.energy.length-1,i))]||0; }
 function snapKick(t){ if(!A||!A.kEnv||!A.efps) return t; var f=A.efps, i=Math.round(t*f), w=Math.round(0.06*f), bk=i, bv=-1;
   for(var k=i-w;k<=i+w;k++){ if(k<0||k>=A.kEnv.length) continue; if(A.kEnv[k]>bv){ bv=A.kEnv[k]; bk=k; } } return bk/f; }
+function sigDist(a,b){ if(!a||!b||a.length!==b.length) return 1; var s=0; for(var i=0;i<a.length;i++){ s+=Math.abs(a[i]-b[i]); } return s/a.length; }
+function computePhotoOrder(){
+  var N=PHOTOS.length, i; var order=[]; for(i=0;i<N;i++) order.push(i);
+  if(N<=2) return order;
+  var TH=0.045;                      /* en dessous : quasi identiques */
+  var remaining=order.slice(), out=[];
+  while(remaining.length){
+    var lastSig=out.length? (PHOTOS[out[out.length-1]].feat||{}).sig : null;
+    var prevSig=out.length>1? (PHOTOS[out[out.length-2]].feat||{}).sig : null;
+    var pos=-1;
+    for(var j=0;j<remaining.length;j++){
+      var s=(PHOTOS[remaining[j]].feat||{}).sig;
+      if((!lastSig||sigDist(s,lastSig)>TH) && (!prevSig||sigDist(s,prevSig)>TH)){ pos=j; break; }
+    }
+    if(pos<0) pos=0;
+    out.push(remaining[pos]); remaining.splice(pos,1);
+  }
+  return out;
+}
 function buildPartition(){
   SEGS=[]; stripDirty=true; if(!A||!A.beats||A.beats.length<2) return;
   if(glReady && TR.ready){ trCompileAll(); atmCompileAll(); }
@@ -261,8 +280,9 @@ function buildPartition(){
     SEGS.push({start:start,end:end,strong:strong,e:energyAt(start)});
   }
   var MOVES=["zoomIn","panLR","zoomOut","panRL","zoomIn","panRL","zoomOut","panLR"];
+  var _PORDER=PHOTOS.length?computePhotoOrder():[];
   SEGS.forEach(function(sg,idx){
-    sg.img=PHOTOS.length?(idx%PHOTOS.length):-1;
+    sg.img=_PORDER.length?_PORDER[idx%_PORDER.length]:-1;
     sg.kbDir=(idx%2===0)?1:-1; sg.slideDir=(idx%2===0)?1:-1;
     sg.move=MOVES[idx%MOVES.length];
     sg.atmo=atmChoose(idx,sg,MOOD,energyAt(sg.start));
@@ -274,7 +294,7 @@ function buildPartition(){
 
 /* ================= Rendu 2D ================= */
 var base=document.getElementById("base"), bctx=base.getContext("2d");
-function prerender(img){ try{ var maxD=1280, w=img.width,h=img.height, sc=Math.min(1,maxD/Math.max(w,h,1)); var cw=Math.max(1,Math.round(w*sc)), ch=Math.max(1,Math.round(h*sc)); var c=document.createElement("canvas"); c.width=cw; c.height=ch; c.getContext("2d").drawImage(img,0,0,cw,ch); return c; }catch(e){ return img; } }
+function prerender(img,maxD){ try{ maxD=maxD||1280; w=img.width,h=img.height, sc=Math.min(1,maxD/Math.max(w,h,1)); var cw=Math.max(1,Math.round(w*sc)), ch=Math.max(1,Math.round(h*sc)); var c=document.createElement("canvas"); c.width=cw; c.height=ch; c.getContext("2d").drawImage(img,0,0,cw,ch); return c; }catch(e){ return img; } }
 function photoFeat(img){
   try{
     var c=document.createElement("canvas"); c.width=16; c.height=16; var x=c.getContext("2d"); x.drawImage(img,0,0,16,16);
@@ -283,7 +303,7 @@ function photoFeat(img){
     var lum=sum/n; r/=n; g/=n; b/=n;
     var mx=Math.max(r,g,b), mn=Math.min(r,g,b), sat=mx>0?(mx-mn)/mx:0, warm=(r-b)/255;
     var vr=0; for(var k=0;k<L.length;k++){ var dd=L[k]-lum; vr+=dd*dd; } var detail=Math.sqrt(vr/n);
-    return {lum:lum, warm:warm, sat:sat, detail:detail, portrait: img.height>img.width};
+    return {lum:lum, warm:warm, sat:sat, detail:detail, portrait: img.height>img.width, sig:L};
   }catch(e){ return {lum:0.5,warm:0,sat:0.3,detail:0.2,portrait:false}; }
 }
 function photoLum(img){ try{ var c=document.createElement("canvas"); c.width=16; c.height=16; var x=c.getContext("2d"); x.drawImage(img,0,0,16,16); var d=x.getImageData(0,0,16,16).data, s=0; for(var i=0;i<d.length;i+=4){ s+=(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]); } return (s/(d.length/4))/255; }catch(e){ return 0.5; } }
@@ -6616,11 +6636,12 @@ document.getElementById("fPhotos").onchange=function(e){
   var files=Array.prototype.slice.call(e.target.files||[]); if(!files.length) return;
   e.target.value="";
   var total=files.length, done=0, idx=0, CONC=4;
-  setState("Ajout des photos… 0/"+total);
+  var pmax=(total>120)?900:((total>60)?1100:1280);
+  setState("Réception de "+total+" photos… traitement 0/"+total);
   var after=function(){ if(A) buildPartition(); updateBadge(); setState(PHOTOS.length+" photos chargées."); if(A&&PHOTOS.length) paintStrip(playing?visualTime():0); };
   function addThumb(c){ var el=document.getElementById("thumbs"); if(!el||!c) return; var tw=108, th=Math.max(1,Math.round(tw*(c.height||1)/(c.width||1))); var tc=document.createElement("canvas"); tc.width=tw; tc.height=th; try{ tc.getContext("2d").drawImage(c,0,0,tw,th); }catch(e){} tc.style.cssText="width:52px;height:auto;border-radius:6px;display:block;box-shadow:0 1px 3px rgba(0,0,0,.4)"; el.appendChild(tc); }
-  function add(src){ try{ var c=prerender(src); var _ft=photoFeat(c); PHOTOS.push({img:c,c:c,url:null,lum:_ft.lum,feat:_ft}); addThumb(c); if(src&&src.close){ try{ src.close(); }catch(x){} } }catch(x){} }
-  function finishOne(){ done++; setState("Ajout des photos… "+done+"/"+total); if(done>=total){ after(); } else { startNext(); } }
+  function add(src){ try{ var c=prerender(src,pmax); var _ft=photoFeat(c); PHOTOS.push({img:c,c:c,url:null,lum:_ft.lum,feat:_ft}); addThumb(c); if(src&&src.close){ try{ src.close(); }catch(x){} } }catch(x){} }
+  function finishOne(){ done++; setState("Traitement "+done+"/"+total); if(done>=total){ after(); } else { startNext(); } }
   function startNext(){
     if(idx>=total) return; var file=files[idx++];
     var fallback=function(){ var url=URL.createObjectURL(file); var img=new Image(); img.onload=function(){ add(img); try{ URL.revokeObjectURL(url); }catch(x){} finishOne(); }; img.onerror=function(){ try{ URL.revokeObjectURL(url); }catch(x){} finishOne(); }; img.src=url; };
