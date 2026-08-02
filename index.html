@@ -96,14 +96,16 @@
 "use strict";
 /* ================= État ================= */
 var A=null, PHOTOS=[], SEGS=[], MOOD="cinema", raf=0, playing=false, LEAD=0.05;
-var SYNC_DEF={cinema:0, doux:0.08, dynamique:-0.08, voyage:0};
-var SYNC_M={cinema:SYNC_DEF.cinema, doux:SYNC_DEF.doux, dynamique:SYNC_DEF.dynamique, voyage:SYNC_DEF.voyage};
+var SYNC_BASE={cinema:0, doux:0.08, dynamique:-0.06, voyage:0.02};   /* phase de base par mode (à 120 BPM) */
+function autoSync(mode,bpm){ var bi=(bpm&&bpm>0)?60/bpm:0.5; var fct=Math.max(0.6,Math.min(1.8, bi/0.5)); return Math.max(-0.35,Math.min(0.35,(SYNC_BASE[mode]||0)*fct)); }
+var SYNC_M={cinema:autoSync("cinema",120),doux:autoSync("doux",120),dynamique:autoSync("dynamique",120),voyage:autoSync("voyage",120)};
+function recomputeSync(){ var bpm=(A&&A.bpm)?A.bpm:120; SYNC_M={cinema:autoSync("cinema",bpm),doux:autoSync("doux",bpm),dynamique:autoSync("dynamique",bpm),voyage:autoSync("voyage",bpm)}; if(typeof syncApply==="function") syncApply(); }
 function curSync(){ return SYNC_M[MOOD]||0; }
 var AC=window.AudioContext||window.webkitAudioContext;
 var ctx=null, AUDIOBUF=null, pausedOffset=0;
 var audioEl=null, audioURL="";
 function ensureAudio(){ if(!ctx){ try{ ctx=new AC(); }catch(e){} } }   /* ctx = analyse seulement ; le son sort d'un lecteur audio classique (comme Suno) */
-function setMusicEl(file){ SYNC_M={cinema:SYNC_DEF.cinema,doux:SYNC_DEF.doux,dynamique:SYNC_DEF.dynamique,voyage:SYNC_DEF.voyage}; if(typeof syncApply==="function") syncApply(); try{ if(audioURL) URL.revokeObjectURL(audioURL); }catch(e){} audioURL=URL.createObjectURL(file); audioEl=new Audio(audioURL); audioEl.preload="auto"; audioEl.onended=function(){ if(playing){ stopPlay(); resetBtn(); } }; }
+function setMusicEl(file){ try{ if(audioURL) URL.revokeObjectURL(audioURL); }catch(e){} audioURL=URL.createObjectURL(file); audioEl=new Audio(audioURL); audioEl.preload="auto"; audioEl.onended=function(){ if(playing){ stopPlay(); resetBtn(); } }; }
 
 /* ================= Essentia (chargement asynchrone + repli) ================= */
 var essentia=null, ESSENTIA_STATE="loading";
@@ -6563,7 +6565,7 @@ var syncEl=document.getElementById("sync"), syncVal=document.getElementById("syn
 function syncLabel(){ var v=Math.round(curSync()*1000); if(syncVal) syncVal.textContent=(v>0?"+":"")+v+" ms"; }
 function syncApply(){ if(syncEl) syncEl.value=Math.round(curSync()*1000); syncLabel(); if(A) paintStrip(playing?visualTime():0); }
 if(syncEl) syncEl.oninput=function(){ SYNC_M[MOOD]=(+syncEl.value)/1000; syncLabel(); if(A) paintStrip(playing?visualTime():0); };
-var srst=document.getElementById("syncReset"); if(srst) srst.onclick=function(){ SYNC_M[MOOD]=SYNC_DEF[MOOD]; syncApply(); };
+var srst=document.getElementById("syncReset"); if(srst) srst.onclick=function(){ SYNC_M[MOOD]=autoSync(MOOD,(A&&A.bpm)?A.bpm:120); syncApply(); };
 syncApply();
 document.querySelectorAll(".mood").forEach(function(btn){ btn.onclick=function(){ document.querySelectorAll(".mood").forEach(function(x){ x.classList.remove("on"); }); btn.classList.add("on"); MOOD=btn.dataset.mood; syncApply(); if(A&&PHOTOS.length){ buildPartition(); updateBadge(); paintStrip(playing?visualTime():0); } setState("Ambiance : <b>"+btn.textContent+"</b> · sync "+Math.round(curSync()*1000)+" ms"); }; });
 
@@ -6599,6 +6601,7 @@ function finishAnalyze(){
   var eng=A.engine==="essentia"?"Essentia":"moteur maison";
   if(A.bpm) setState("Moteur : <b>"+eng+"</b> · "+A.bpm+" BPM · "+A.beats.length+" temps"+(A.engine==="essentia"&&A.conf?(" · confiance "+A.conf.toFixed(1)):"")+". Ajoute des photos puis « Lire ».");
   else setState("Moteur : <b>"+eng+"</b> · pas de tempo net. Ajoute des photos puis « Lire ».");
+  recomputeSync();
   stripDirty=true; if(PHOTOS.length) buildPartition(); updateBadge(); paintStrip(0);
 }
 
