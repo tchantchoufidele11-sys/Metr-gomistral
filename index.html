@@ -49,6 +49,12 @@
 
   <canvas class="strip" id="strip" width="800" height="92"></canvas>
 
+  <div class="synb">
+    <label>Sync</label>
+    <input type="range" id="sync" min="-500" max="500" step="5" value="0">
+    <span class="val" id="syncVal">0 ms</span>
+  </div>
+
   <div class="synb" id="ovlBar">
     <button id="ovlLoad" style="border:1px solid #26345c;background:#141d3a;color:#eaf0fb;border-radius:9px;padding:9px 12px;font:600 12.5px system-ui">🎞️ Overlay</button>
     <input type="range" id="ovlAmt" min="0" max="100" step="5" value="85" style="flex:1;accent-color:#E0A33E">
@@ -88,6 +94,8 @@
 "use strict";
 /* ================= État ================= */
 var A=null, PHOTOS=[], SEGS=[], MOOD="cinema", raf=0, playing=false, LEAD=0.05;
+var SYNC_M={cinema:0,doux:0.05,dynamique:-0.05,voyage:0};
+function curSync(){ return SYNC_M[MOOD]||0; }
 var AC=window.AudioContext||window.webkitAudioContext;
 var ctx=null, AUDIOBUF=null, pausedOffset=0;
 var audioEl=null, audioURL="";
@@ -6466,11 +6474,13 @@ function renderStripBg(){
 function paintStrip(t){
   if(stripDirty){ renderStripBg(); stripDirty=false; }
   var Wd=strip.width,Hd=strip.height; sctx.clearRect(0,0,Wd,Hd); sctx.drawImage(stripBg,0,0);
-  if(!A||!A.dur) return; var px=t/A.dur*Wd; sctx.strokeStyle="#fff"; sctx.lineWidth=1.5; sctx.beginPath(); sctx.moveTo(px,0); sctx.lineTo(px,Hd); sctx.stroke();
+  if(!A||!A.dur) return;
+  if(SEGS&&SEGS.length){ sctx.strokeStyle="rgba(224,163,62,0.85)"; sctx.lineWidth=1; var off=LEAD+curSync(); for(var _i=0;_i<SEGS.length;_i++){ var cx=(SEGS[_i].start-off)/A.dur*Wd; if(cx>=0&&cx<=Wd){ sctx.beginPath(); sctx.moveTo(cx,0); sctx.lineTo(cx,Hd); sctx.stroke(); } } }
+  var px=t/A.dur*Wd; sctx.strokeStyle="#fff"; sctx.lineWidth=1.5; sctx.beginPath(); sctx.moveTo(px,0); sctx.lineTo(px,Hd); sctx.stroke();
 }
 
 /* ================= Horloge audio + boucle ================= */
-function visualTime(){ return (audioEl?audioEl.currentTime:0) + LEAD; }
+function visualTime(){ return (audioEl?audioEl.currentTime:0) + LEAD + curSync(); }
 function loop(){
   if(!playing) return;
   var t=visualTime(); if(t<0) t=0;
@@ -6533,7 +6543,12 @@ ovlFile.onchange=function(e){ var fl=e.target.files&&e.target.files[0]; e.target
 };
 if(ovlAmt) ovlAmt.oninput=function(){ OVL.amt=(+ovlAmt.value)/100; };
 document.getElementById("ovlOff").onclick=function(){ OVL.on=false; try{ ovVid.pause(); }catch(e){} };
-document.querySelectorAll(".mood").forEach(function(btn){ btn.onclick=function(){ document.querySelectorAll(".mood").forEach(function(x){ x.classList.remove("on"); }); btn.classList.add("on"); MOOD=btn.dataset.mood; if(A&&PHOTOS.length){ buildPartition(); updateBadge(); paintStrip(playing?visualTime():0); } setState("Ambiance : <b>"+btn.textContent+"</b>"); }; });
+var syncEl=document.getElementById("sync"), syncVal=document.getElementById("syncVal");
+function syncLabel(){ var v=Math.round(curSync()*1000); if(syncVal) syncVal.textContent=(v>0?"+":"")+v+" ms"; }
+function syncApply(){ if(syncEl) syncEl.value=Math.round(curSync()*1000); syncLabel(); if(A) paintStrip(playing?visualTime():0); }
+if(syncEl) syncEl.oninput=function(){ SYNC_M[MOOD]=(+syncEl.value)/1000; syncLabel(); if(A) paintStrip(playing?visualTime():0); };
+syncApply();
+document.querySelectorAll(".mood").forEach(function(btn){ btn.onclick=function(){ document.querySelectorAll(".mood").forEach(function(x){ x.classList.remove("on"); }); btn.classList.add("on"); MOOD=btn.dataset.mood; syncApply(); if(A&&PHOTOS.length){ buildPartition(); updateBadge(); paintStrip(playing?visualTime():0); } setState("Ambiance : <b>"+btn.textContent+"</b> · sync "+Math.round(curSync()*1000)+" ms"); }; });
 
 document.getElementById("fMusic").onchange=function(e){
   var file=e.target.files&&e.target.files[0]; if(!file) return; setMusicEl(file);
