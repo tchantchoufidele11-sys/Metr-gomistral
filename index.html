@@ -49,9 +49,17 @@
 
   <canvas class="strip" id="strip" width="800" height="92"></canvas>
 
+  <div class="synb" id="tempoBar">
+    <label>Tempo</label>
+    <span class="val" id="bpmShow" style="width:auto;flex:1;text-align:left;color:#dfe7f6">— BPM</span>
+    <button id="bpmHalf" style="border:1px solid #26345c;background:#141d3a;color:#eaf0fb;border-radius:8px;padding:8px 11px;font:700 12px system-ui">÷2</button>
+    <button id="bpmDbl" style="border:1px solid #26345c;background:#141d3a;color:#eaf0fb;border-radius:8px;padding:8px 11px;font:700 12px system-ui">×2</button>
+    <button id="bpmReset" style="border:1px solid #26345c;background:#141d3a;color:#eaf0fb;border-radius:8px;padding:8px 11px;font:600 12px system-ui">Reset</button>
+  </div>
+
   <div class="synb">
     <label>Sync</label>
-    <input type="range" id="sync" min="-600" max="600" step="10" value="0">
+    <input type="range" id="sync" min="-800" max="800" step="5" value="0">
     <span class="val" id="syncVal">0 ms</span>
   </div>
 
@@ -93,12 +101,12 @@
 <script>
 "use strict";
 /* ================= État ================= */
-var A=null, PHOTOS=[], SEGS=[], MOOD="cinema", raf=0, playing=false, SYNC=0, LEAD=0.05;
+var A=null, PHOTOS=[], SEGS=[], MOOD="cinema", raf=0, playing=false, SYNC=0, LEAD=0.05, BPM_MULT=1;
 var AC=window.AudioContext||window.webkitAudioContext;
 var ctx=null, AUDIOBUF=null, pausedOffset=0;
 var audioEl=null, audioURL="";
 function ensureAudio(){ if(!ctx){ try{ ctx=new AC(); }catch(e){} } }   /* ctx = analyse seulement ; le son sort d'un lecteur audio classique (comme Suno) */
-function setMusicEl(file){ try{ if(audioURL) URL.revokeObjectURL(audioURL); }catch(e){} audioURL=URL.createObjectURL(file); audioEl=new Audio(audioURL); audioEl.preload="auto"; audioEl.onended=function(){ if(playing){ stopPlay(); resetBtn(); } }; }
+function setMusicEl(file){ BPM_MULT=1; try{ if(audioURL) URL.revokeObjectURL(audioURL); }catch(e){} audioURL=URL.createObjectURL(file); audioEl=new Audio(audioURL); audioEl.preload="auto"; audioEl.onended=function(){ if(playing){ stopPlay(); resetBtn(); } }; }
 
 /* ================= Essentia (chargement asynchrone + repli) ================= */
 var essentia=null, ESSENTIA_STATE="loading";
@@ -113,11 +121,22 @@ var essentiaReady=new Promise(function(resolve){
 });
 
 /* ================= Ambiances (hold = nombre entier de temps) ================= */
-var MODE_BEATS={
-  cinema:{min:4, tgt:6, max:9},
-  doux:{min:6, tgt:8, max:12},
-  dynamique:{min:2, tgt:3, max:4.5},
-  voyage:{min:3, tgt:5, max:7}
+/* Tranches BPM -> durée de plan (secondes), d'après le catalogue Magot */
+function bpmBand(bpm){
+  if(bpm<50) return [5.0,10.0];
+  if(bpm<70) return [4.0,7.0];
+  if(bpm<90) return [3.0,5.0];
+  if(bpm<110) return [2.0,4.0];
+  if(bpm<130) return [1.5,3.0];
+  if(bpm<160) return [1.0,2.0];
+  return [1.2,2.5];                 /* extrême : on ne coupe pas chaque battement */
+}
+/* position du mode dans la plage [lo,hi] : a=min, t=cible, b=max */
+var MODE_POS={
+  cinema:{a:0.35,t:0.60,b:1.00},
+  doux:{a:0.50,t:0.78,b:1.00},
+  dynamique:{a:0.00,t:0.28,b:0.70},
+  voyage:{a:0.30,t:0.55,b:0.90}
 };
 var MOODS={
   cinema:{minSec:2.0, tgtSec:2.8, maxSec:4.0, accent:0.50, grade:{expo:0.02,contrast:0.12,sat:-0.04,temp:0.16,vig:0.36,grain:0.02,leak:0.10}, kb:0.10, punch:0.055, fx:{chromatic:0,bloom:0.10,halation:0.10,anamorphic:0,dust:0,scanlines:0,shutter:0,lensFlare:0}},
@@ -228,11 +247,11 @@ function buildPartition(){
   if(glReady && TR.ready){ trCompileAll(); atmCompileAll(); }
   trReset(); atmReset();
   var M=MOODS[MOOD], beats=A.beats, str=A.strength||[], dur=A.dur;
-  var BPM=(A.bpm&&A.bpm>0)?A.bpm:110, beatDur=60/BPM;
-  var BW=MODE_BEATS[MOOD]||MODE_BEATS.cinema;
-  function _cl(v){ return Math.max(1.2, Math.min(6.0, v)); }
-  var cMin=_cl(BW.min*beatDur), cTgt=_cl(BW.tgt*beatDur), cMax=_cl(BW.max*beatDur);
-  if(cMax<=cMin) cMax=cMin+0.6; if(cTgt<cMin) cTgt=cMin; if(cTgt>cMax) cTgt=cMax;
+  var BPM=((A.bpm&&A.bpm>0)?A.bpm:100)*BPM_MULT;
+  var _band=bpmBand(BPM), _blo=_band[0], _bhi=_band[1], _brng=(_bhi-_blo)||1;
+  var _mp=MODE_POS[MOOD]||MODE_POS.cinema;
+  var cMin=_blo+_mp.a*_brng, cTgt=_blo+_mp.t*_brng, cMax=_blo+_mp.b*_brng;
+  if(cMax<=cMin) cMax=cMin+0.5; if(cTgt<cMin) cTgt=cMin; if(cTgt>cMax) cTgt=cMax;
   /* INVERSION : parmi les temps de [min,max] secondes, on prend le PLUS FORT.
      -> chaque coupe tombe sur un accent réel ; jamais de seconde arbitraire. */
   var cuts=[], lastCut=0, bi=0, gi=0, span=(cMax-cMin)||1;
@@ -6460,16 +6479,25 @@ function loop(){
   var t=visualTime(); if(t<0) t=0;
   var idx=-1; for(var i=0;i<SEGS.length;i++){ if(t>=SEGS[i].start && t<SEGS[i].end){ idx=i; break; } }
   if(idx<0 && SEGS.length) idx=(t<SEGS[0].start)?0:SEGS.length-1;
-  var sg=(idx>=0)?SEGS[idx]:null, prev=(idx>0)?SEGS[idx-1]:null, into=sg?(t-sg.start):0;
-  var trName=sg?sg.trans:"none";
-  var TRd=Math.min((sg&&sg.trDur!=null?sg.trDur:0.5),(sg?(sg.end-sg.start)*0.5:0));
-  var inTrans=(sg&&prev&&TRd>0&&into<TRd&&trName!=="cut"&&trName!=="none");
+  var sg=(idx>=0)?SEGS[idx]:null, prev=(idx>0)?SEGS[idx-1]:null, next=(idx>=0&&idx+1<SEGS.length)?SEGS[idx+1]:null, into=sg?(t-sg.start):0;
   var strongPulse=(sg&&sg.strong&&into<0.10)?(1-into/0.10):0;
   _atmo=sg?(sg.atmo||null):null; _atmoAmt=(ATMO_AMT[MOOD]!=null?ATMO_AMT[MOOD]:0.6);
-  if(glReady && TR.ready && inTrans){
-    drawSegAt(prev,prev.end-0.001,0,1); trUpload(TR.texFrom);
-    drawSegAt(sg,t,0,1); trUpload(TR.texTo);
-    trMix(trName,into/TRd,sg);
+  /* transition centrée sur la coupe : fenêtre [coupe - d/2, coupe + d/2] */
+  var trFrom=null, trTo=null, trNm="none", trProg=0;
+  if(sg){
+    if(next && next.trans!=="cut" && next.trans!=="none"){
+      var nd=Math.min((next.trDur!=null?next.trDur:0.5),(sg.end-sg.start),(next.end-next.start));
+      if(nd>0 && t>=next.start-nd/2 && t<next.start){ trFrom=sg; trTo=next; trNm=next.trans; trProg=(t-(next.start-nd/2))/nd; }
+    }
+    if(!trTo && prev && sg.trans!=="cut" && sg.trans!=="none"){
+      var pd=Math.min((sg.trDur!=null?sg.trDur:0.5),(sg.end-sg.start),(prev.end-prev.start));
+      if(pd>0 && t>=sg.start && t<sg.start+pd/2){ trFrom=prev; trTo=sg; trNm=sg.trans; trProg=(t-(sg.start-pd/2))/pd; }
+    }
+  }
+  if(glReady && TR.ready && trTo){
+    drawSegAt(trFrom,(trFrom===sg? t : trFrom.end-0.001),0,1); trUpload(TR.texFrom);
+    drawSegAt(trTo,(trTo===sg? t : trTo.start+0.001),0,1); trUpload(TR.texTo);
+    trMix(trNm, Math.max(0,Math.min(1,trProg)), trTo);
     drawGL(t,strongPulse,TR.fbo.tex);
   } else {
     var r=renderBaseFrame(t);
@@ -6499,12 +6527,19 @@ function updateBadge(){
   if(A){ parts.push(A.engine==="essentia"?"Essentia":"maison"); parts.push(A.bpm?(A.bpm+" BPM"):"rég."); if(A.engine==="essentia"&&A.conf) parts.push("conf "+A.conf.toFixed(1)); parts.push((A.beats?A.beats.length:0)+" temps"); }
   parts.push(PHOTOS.length+" ph"); if(SEGS.length) parts.push(SEGS.length+" plans"); if(TR&&TR.okCount) parts.push(TR.okCount+" trans"); if(ATMO&&ATMO.okCount) parts.push(ATMO.okCount+" atmo");
   document.getElementById("badge").textContent=parts.join(" · ");
+  if(typeof refreshBpm==="function") refreshBpm();
 }
 document.getElementById("pickMusic").onclick=function(){ ensureAudio(); document.getElementById("fMusic").click(); };
 document.getElementById("pickPhotos").onclick=function(){ document.getElementById("fPhotos").click(); };
 document.getElementById("play").onclick=function(){ var self=this; ensureAudio(); if(playing){ stopPlay(); self.textContent="▶ Reprendre"; } else { startPlay(); setTimeout(function(){ if(playing) self.textContent="⏸ Pause"; },30); } };
 document.getElementById("restart").onclick=function(){ if(!A||!PHOTOS.length) return; pausedOffset=0; buildPartition(); stopPlay(); startPlay(); setTimeout(function(){ if(playing) document.getElementById("play").textContent="⏸ Pause"; },30); };
 document.getElementById("clear").onclick=function(){ stopPlay(); PHOTOS.forEach(function(p){ try{URL.revokeObjectURL(p.url);}catch(e){} }); PHOTOS=[]; SEGS=[]; A=null; AUDIOBUF=null; pausedOffset=0; stripDirty=true; document.getElementById("empty").style.display="flex"; resetBtn(); setState(""); updateBadge(); paintStrip(0); bctx.clearRect(0,0,base.width,base.height); if(glReady){ gl.clear(gl.COLOR_BUFFER_BIT); } };
+function refreshBpm(){ var el=document.getElementById("bpmShow"); if(!el) return; var raw=(A&&A.bpm>0)?A.bpm:0; if(!raw){ el.textContent="— BPM"; return; } var used=Math.round(raw*BPM_MULT); el.textContent = used+" BPM"+(BPM_MULT!==1?(" · mesuré "+raw):""); }
+function applyTempo(){ if(A){ buildPartition(); updateBadge(); if(PHOTOS.length) paintStrip(playing?visualTime():0); } refreshBpm(); }
+(function(){ var hb=document.getElementById("bpmHalf"), db=document.getElementById("bpmDbl"), rb=document.getElementById("bpmReset");
+  if(hb) hb.onclick=function(){ BPM_MULT=0.5; applyTempo(); };
+  if(db) db.onclick=function(){ BPM_MULT=2; applyTempo(); };
+  if(rb) rb.onclick=function(){ BPM_MULT=1; applyTempo(); }; })();
 ovVid=document.getElementById("ovlVid");
 var ovlFile=document.getElementById("ovlFile"), ovlAmt=document.getElementById("ovlAmt");
 document.getElementById("ovlLoad").onclick=function(){ ovlFile.click(); };
