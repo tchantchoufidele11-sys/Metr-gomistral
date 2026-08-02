@@ -6317,7 +6317,10 @@ function gtChoose(idx,sg,prev,photos,energy,mood){
     else if(fp.drive>0.70) prefs=["Swirl","pinwheel","ZoomInCircles","RotateScaleVanish","GlitchDisplace","Mosaic"];
     else prefs=["CrossZoom","SimpleZoom","DirectionalScaled","cube","Radial"];
   }
-  var name=bagPick([prefs, TIERS[tier]||TIERS.subtle, GT_NAMES], k);
+  var pool=TIERS[tier]||TIERS.subtle;
+  /* 1 plan sur 3 : on élargit à tout le registre du tier -> beaucoup plus de variété ; les autres restent ciblés */
+  var order=(k%3===0)?[pool, prefs, GT_NAMES]:[prefs, pool, GT_NAMES];
+  var name=bagPick(order, k);
   sg.trDur=prof.dur;
   return name;
 }
