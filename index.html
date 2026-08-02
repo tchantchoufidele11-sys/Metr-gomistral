@@ -99,7 +99,7 @@ var A=null, PHOTOS=[], SEGS=[], MOOD="cinema", raf=0, playing=false, LEAD=0.05;
 var SYNC_BASE={cinema:0, doux:0.08, dynamique:-0.06, voyage:0.02};   /* phase de base par mode (à 120 BPM) */
 function autoSync(mode,bpm){ var bi=(bpm&&bpm>0)?60/bpm:0.5; var fct=Math.max(0.6,Math.min(1.8, bi/0.5)); return Math.max(-0.35,Math.min(0.35,(SYNC_BASE[mode]||0)*fct)); }
 var SYNC_M={cinema:autoSync("cinema",120),doux:autoSync("doux",120),dynamique:autoSync("dynamique",120),voyage:autoSync("voyage",120)};
-function recomputeSync(){ var bpm=(A&&A.bpm)?A.bpm:120; SYNC_M={cinema:autoSync("cinema",bpm),doux:autoSync("doux",bpm),dynamique:autoSync("dynamique",bpm),voyage:autoSync("voyage",bpm)}; if(typeof syncApply==="function") syncApply(); }
+function recomputeSync(){ var bpm=(A&&A.bpmFelt)?A.bpmFelt:((A&&A.bpm)?A.bpm:120); SYNC_M={cinema:autoSync("cinema",bpm),doux:autoSync("doux",bpm),dynamique:autoSync("dynamique",bpm),voyage:autoSync("voyage",bpm)}; if(typeof syncApply==="function") syncApply(); }
 function curSync(){ return SYNC_M[MOOD]||0; }
 var AC=window.AudioContext||window.webkitAudioContext;
 var ctx=null, AUDIOBUF=null, pausedOffset=0;
@@ -6314,6 +6314,7 @@ function gtChoose(idx,sg,prev,photos,energy,mood){
   if(e<0.25) tier="subtle";
   else if(strong && e>0.72 && specAllowed>0 && ((k*0.618)%1)<specAllowed*3) tier="spectacular";
   else { var r=(k*0.618)%1; tier=(r < subRatio)?"subtle":"elegant"; }
+  if(A&&A.peaks&&A.peaks.length){ for(var _pi=0;_pi<A.peaks.length;_pi++){ if(Math.abs(A.peaks[_pi]-sg.start)<0.5){ if(specAllowed>0.02) tier="spectacular"; break; } } }
   var prefs=[];
   if(tier==="subtle"){
     if(dW>0.20) prefs=["colorphase","fadecolor","ColourDistance"];
@@ -6338,8 +6339,9 @@ function gtChoose(idx,sg,prev,photos,energy,mood){
   /* registre d'abord (garde le beat qui claque : surtout sobre) ; puis le lot du mode ; puis le réservoir général — panier sans répétition */
   var order=(k%3===0)?[modeTier, modeLot, GT_NAMES]:[prefsInLot, modeTier, modeLot, GT_NAMES];
   var name=bagPick(order, k);
-  var _bi=(A&&A.bpm>0)?60/A.bpm:0.5;
-  var _tf=Math.max(0.7,Math.min(2.0,_bi/0.5));   /* lent -> transition plus longue/douce ; rapide -> plus serrée */
+  var _bpm=(A&&A.bpmFelt)?A.bpmFelt:((A&&A.bpm>0)?A.bpm:100);
+  var _bi=60/_bpm;
+  var _tf=Math.max(0.7,Math.min(2.0,_bi/0.5));   /* lent -> transition plus longue/douce ; rapide -> plus serrée (tempo ressenti) */
   sg.trDur=prof.dur*_tf;
   return name;
 }
@@ -6567,7 +6569,7 @@ var syncEl=document.getElementById("sync"), syncVal=document.getElementById("syn
 function syncLabel(){ var v=Math.round(curSync()*1000); if(syncVal) syncVal.textContent=(v>0?"+":"")+v+" ms"; }
 function syncApply(){ if(syncEl) syncEl.value=Math.round(curSync()*1000); syncLabel(); if(A) paintStrip(playing?visualTime():0); }
 if(syncEl) syncEl.oninput=function(){ SYNC_M[MOOD]=(+syncEl.value)/1000; syncLabel(); if(A) paintStrip(playing?visualTime():0); };
-var srst=document.getElementById("syncReset"); if(srst) srst.onclick=function(){ SYNC_M[MOOD]=autoSync(MOOD,(A&&A.bpm)?A.bpm:120); syncApply(); };
+var srst=document.getElementById("syncReset"); if(srst) srst.onclick=function(){ SYNC_M[MOOD]=autoSync(MOOD,(A&&A.bpmFelt)?A.bpmFelt:((A&&A.bpm)?A.bpm:120)); syncApply(); };
 syncApply();
 document.querySelectorAll(".mood").forEach(function(btn){ btn.onclick=function(){ document.querySelectorAll(".mood").forEach(function(x){ x.classList.remove("on"); }); btn.classList.add("on"); MOOD=btn.dataset.mood; syncApply(); if(A&&PHOTOS.length){ buildPartition(); updateBadge(); paintStrip(playing?visualTime():0); } setState("Ambiance : <b>"+btn.textContent+"</b> · sync "+Math.round(curSync()*1000)+" ms"); }; });
 
@@ -6601,8 +6603,10 @@ document.getElementById("fMusic").onchange=function(e){
 function finishAnalyze(){
   if(!A){ setState("Analyse impossible."); return; }
   var eng=A.engine==="essentia"?"Essentia":"moteur maison";
-  if(A.bpm) setState("Moteur : <b>"+eng+"</b> · "+A.bpm+" BPM · "+A.beats.length+" temps"+(A.engine==="essentia"&&A.conf?(" · confiance "+A.conf.toFixed(1)):"")+". Ajoute des photos puis « Lire ».");
+  if(A.bpm) setState("Moteur : <b>"+eng+"</b> · "+A.bpm+" BPM"+((A.bpmFelt&&A.bpmFelt!==A.bpm)?(" (ressenti "+A.bpmFelt+")"):"")+" · "+A.beats.length+" temps"+(A.engine==="essentia"&&A.conf?(" · confiance "+A.conf.toFixed(1)):"")+". Ajoute des photos puis « Lire ».");
   else setState("Moteur : <b>"+eng+"</b> · pas de tempo net. Ajoute des photos puis « Lire ».");
+  if(A){ var _fb=A.bpm||100; while(_fb>145){ _fb/=2; } while(_fb<70){ _fb*=2; } A.bpmFelt=Math.round(_fb); }
+  if(A){ A.peaks=[]; if(A.dur){ for(var _t=1.0; _t<A.dur; _t+=0.25){ var _r=energyAt(_t)-energyAt(_t-1.0); if(_r>0.18 && energyAt(_t)>0.5){ A.peaks.push(_t); _t+=1.4; } } } }
   recomputeSync();
   stripDirty=true; if(PHOTOS.length) buildPartition(); updateBadge(); paintStrip(0);
 }
