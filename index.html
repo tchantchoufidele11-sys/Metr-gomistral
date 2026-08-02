@@ -6250,6 +6250,13 @@ var TIERS={
   elegant:["BookFlip","Bounce","BowTieHorizontal","BowTieVertical","BowTieWithParameter","Box","CircleCrop","CrossZoom","Directional","DirectionalScaled","Dreamy","DreamyZoom","Drop_Zone_Flicker","Fold","GridFlip","HorizontalClose","HorizontalOpen","LeftRight","Rectangle","RectangleCrop","Rolls","SimpleFlip","SimpleZoom","SimpleZoomOut","Slides","TopBottom","VerticalClose","VerticalOpen","WaterDrop","ZoomLeftWipe","ZoomRigthWipe","angular","chessboard","circle","circleopen","coord-from-in","crosshatch","crosswarp","cube","directionalwarp","directionalwipe","displacement","doorway","fragment","heart","perlin","polar_function","randomsquares","ripple","rotateTransition","rotate_scale_fade","scale-in","splitSlideInHorizontal","splitSlideInOutHorizontal","splitSlideInOutVertical","splitSlideInVertical","splitSlideOutHorizontal","splitSlideOutVertical","squareswire","squeeze","swap","tangentMotionBlur","wind","windowslice","wipeDown","wipeLeft","wipeRight","wipeUp","x_axis_translation","zoomInOut"],
   spectacular:["AdvancedMosaic","ButterflyWaveScrawler","CrazyParametricFun","DoomScreenTransition","FilmBurn","GlitchDisplace","GlitchMemories","InvertedPageCurl","Mosaic","Overexposure","PolkaDotsCurtain","PuzzleRight","Radial","Revolve_Left","RotateScaleVanish","StarWipe","StereoViewer","StripDatamoshGlitch","Swirl","TVStatic","TilesWave","ZoomInCircles","burn","burn0","cannabisleaf","flyeye","hexagonalize","kaleidoscope","luminance_melt","mosaic_transition","old_tv_lost_signal","parametric_glitch","pinwheel","pixelize","powerKaleido","randomNoisex","static_wipe","undulatingBurnOut","windowblinds"]
 };
+var MODE_TRANS={
+  _universal:["fade","dissolve","CrossZoom","LinearBlur","morph","StaticFade"],
+  cinema:["FilmBurn","burn","Overexposure","luminance_melt","cube","doorway","Fold","InvertedPageCurl","BookFlip","SimpleFlip","GridFlip","BowTieHorizontal","BowTieVertical","Rolls","swap","circle","circleopen","CircleCrop","heart","StarWipe","Bounce","ButterflyWaveScrawler","DreamyZoom","StereoViewer"],
+  doux:["fadecolor","fadegrayscale","colorphase","ColourDistance","DefocusBlur","Dreamy","luma","HSVfade","multiply_blend","BlockDissolve","crosswarp","WaterDrop","ripple","EdgeTransition","undulatingBurnOut"],
+  dynamique:["directionalwipe","wipeLeft","wipeRight","wipeUp","wipeDown","angular","windowslice","windowblinds","Mosaic","AdvancedMosaic","mosaic_transition","hexagonalize","pixelize","GlitchDisplace","GlitchMemories","StripDatamoshGlitch","parametric_glitch","TVStatic","old_tv_lost_signal","randomNoisex","static_wipe","Swirl","pinwheel","kaleidoscope","powerKaleido","RotateScaleVanish","ZoomInCircles","DoomScreenTransition","PolkaDotsCurtain","cannabisleaf","PuzzleRight","crosshatch","chessboard","squareswire","TilesWave","Radial","flyeye","CrazyParametricFun"],
+  voyage:["directionalwarp","Directional","DirectionalScaled","wind","x_axis_translation","tangentMotionBlur","SimpleZoom","SimpleZoomOut","zoomInOut","Slides","splitSlideInHorizontal","splitSlideInVertical","ZoomLeftWipe","ZoomRigthWipe","polar_function","perlin","fragment","coord-from-in","Revolve_Left","rotate_scale_fade","Rectangle","RectangleCrop","Box"]
+};
 var MOODTRANS={
   cinema:{sub:0.80,ele:0.16,dur:0.60},
   doux:{sub:0.90,ele:0.10,dur:0.72},
@@ -6317,9 +6324,11 @@ function gtChoose(idx,sg,prev,photos,energy,mood){
     else if(fp.drive>0.70) prefs=["Swirl","pinwheel","ZoomInCircles","RotateScaleVanish","GlitchDisplace","Mosaic"];
     else prefs=["CrossZoom","SimpleZoom","DirectionalScaled","cube","Radial"];
   }
-  var pool=TIERS[tier]||TIERS.subtle;
-  /* 1 plan sur 3 : on élargit à tout le registre du tier -> beaucoup plus de variété ; les autres restent ciblés */
-  var order=(k%3===0)?[pool, prefs, GT_NAMES]:[prefs, pool, GT_NAMES];
+  var modeLot=(MODE_TRANS[mood]||[]).concat(MODE_TRANS._universal||[]);
+  var prefsInLot=prefs.filter(function(n){ return modeLot.indexOf(n)>=0; });
+  /* le mode pioche DANS SON LOT d'abord (image/musique affine) ; 1 sur 3 = variété dans le lot ;
+     le réservoir général des 125 ne sort que lorsque le lot du mode est épuisé (panier sans répétition) */
+  var order=(k%3===0)?[modeLot, prefsInLot, GT_NAMES]:[prefsInLot, modeLot, GT_NAMES];
   var name=bagPick(order, k);
   sg.trDur=prof.dur;
   return name;
