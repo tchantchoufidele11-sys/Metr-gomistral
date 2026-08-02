@@ -34,9 +34,6 @@
   .synb input[type=range]{flex:1;accent-color:var(--gold)}
   .synb .val{font:600 12px system-ui;color:var(--gold);width:64px;text-align:right}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4/dist/tf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm@4/dist/tf-backend-wasm.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2/dist/mobilenet.min.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -228,33 +225,25 @@ function analyzeCustom(audio){
 function energyAt(t){ if(!A||!A.energy||!A.fps) return 0.5; var i=Math.round(t*A.fps); return A.energy[Math.max(0,Math.min(A.energy.length-1,i))]||0; }
 function snapKick(t){ if(!A||!A.kEnv||!A.efps) return t; var f=A.efps, i=Math.round(t*f), w=Math.round(0.06*f), bk=i, bv=-1;
   for(var k=i-w;k<=i+w;k++){ if(k<0||k>=A.kEnv.length) continue; if(A.kEnv[k]>bv){ bv=A.kEnv[k]; bk=k; } } return bk/f; }
-function cosSim(a,b){ if(!a||!b) return 0; var s=0,na=0,nb=0; for(var i=0;i<a.length;i++){ s+=a[i]*b[i]; na+=a[i]*a[i]; nb+=b[i]*b[i]; } return s/(Math.sqrt(na)*Math.sqrt(nb)+1e-9); }
 function sigDist(a,b){ if(!a||!b||a.length!==b.length) return 1; var s=0; for(var i=0;i<a.length;i++){ s+=Math.abs(a[i]-b[i]); } return s/a.length; }
-function tooSimilar(ia,ib){ var fa=(PHOTOS[ia].feat||{}), fb=(PHOTOS[ib].feat||{}); if(fa.emb&&fb.emb) return cosSim(fa.emb,fb.emb)>0.80; return sigDist(fa.sig,fb.sig)<0.045; }
 function computePhotoOrder(){
   var N=PHOTOS.length, i; var order=[]; for(i=0;i<N;i++) order.push(i);
   if(N<=2) return order;
+  var TH=0.045;                      /* en dessous : quasi identiques */
   var remaining=order.slice(), out=[];
   while(remaining.length){
-    var last=out.length?out[out.length-1]:-1, prev=out.length>1?out[out.length-2]:-1, pos=-1;
+    var lastSig=out.length? (PHOTOS[out[out.length-1]].feat||{}).sig : null;
+    var prevSig=out.length>1? (PHOTOS[out[out.length-2]].feat||{}).sig : null;
+    var pos=-1;
     for(var j=0;j<remaining.length;j++){
-      var okL=(last<0)||!tooSimilar(remaining[j],last);
-      var okP=(prev<0)||!tooSimilar(remaining[j],prev);
-      if(okL&&okP){ pos=j; break; }
+      var s=(PHOTOS[remaining[j]].feat||{}).sig;
+      if((!lastSig||sigDist(s,lastSig)>TH) && (!prevSig||sigDist(s,prevSig)>TH)){ pos=j; break; }
     }
     if(pos<0) pos=0;
     out.push(remaining[pos]); remaining.splice(pos,1);
   }
   return out;
 }
-var MNET=null;
-function embedPhoto(c){ if(!MNET||typeof tf==="undefined"||!c) return null; try{ var t=tf.tidy(function(){ return MNET.infer(c, true); }); var a=t.dataSync(); t.dispose(); return Float32Array.from(a); }catch(e){ return null; } }
-function sweepEmb(){ if(!MNET) return; var i=0; function step(){ var n=0; while(i<PHOTOS.length && n<3){ var p=PHOTOS[i]; if(p&&p.feat&&!p.feat.emb){ p.feat.emb=embedPhoto(p.c); n++; } i++; } if(i<PHOTOS.length){ setTimeout(step,0); } else if(A){ buildPartition(); if(PHOTOS.length) paintStrip(playing?visualTime():0); updateBadge(); } } step(); }
-(function initReco(){
-  if(typeof tf==="undefined"||typeof mobilenet==="undefined"){ if(initReco._n=(initReco._n||0)+1, initReco._n<30) setTimeout(initReco,400); return; }
-  try{ if(tf.wasm&&tf.wasm.setWasmPaths) tf.wasm.setWasmPaths("https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm@4/dist/"); }catch(e){}
-  tf.setBackend("wasm").catch(function(){ return tf.setBackend("cpu"); }).then(function(){ return mobilenet.load({version:2,alpha:0.5}); }).then(function(m){ MNET=m; sweepEmb(); }).catch(function(e){ MNET=null; });
-})();
 function buildPartition(){
   SEGS=[]; stripDirty=true; if(!A||!A.beats||A.beats.length<2) return;
   if(glReady && TR.ready){ trCompileAll(); atmCompileAll(); }
@@ -6649,7 +6638,7 @@ document.getElementById("fPhotos").onchange=function(e){
   var total=files.length, done=0, idx=0, CONC=4;
   var pmax=(total>120)?900:((total>60)?1100:1280);
   setState("Réception de "+total+" photos… traitement 0/"+total);
-  var after=function(){ if(A) buildPartition(); updateBadge(); setState(PHOTOS.length+" photos chargées."); if(A&&PHOTOS.length) paintStrip(playing?visualTime():0); sweepEmb(); };
+  var after=function(){ if(A) buildPartition(); updateBadge(); setState(PHOTOS.length+" photos chargées."); if(A&&PHOTOS.length) paintStrip(playing?visualTime():0); };
   function addThumb(c){ var el=document.getElementById("thumbs"); if(!el||!c) return; var tw=108, th=Math.max(1,Math.round(tw*(c.height||1)/(c.width||1))); var tc=document.createElement("canvas"); tc.width=tw; tc.height=th; try{ tc.getContext("2d").drawImage(c,0,0,tw,th); }catch(e){} tc.style.cssText="width:52px;height:auto;border-radius:6px;display:block;box-shadow:0 1px 3px rgba(0,0,0,.4)"; el.appendChild(tc); }
   function add(src){ try{ var c=prerender(src,pmax); var _ft=photoFeat(c); PHOTOS.push({img:c,c:c,url:null,lum:_ft.lum,feat:_ft}); addThumb(c); if(src&&src.close){ try{ src.close(); }catch(x){} } }catch(x){} }
   function finishOne(){ done++; setState("Traitement "+done+"/"+total); if(done>=total){ after(); } else { startNext(); } }
