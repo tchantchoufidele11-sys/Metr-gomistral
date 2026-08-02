@@ -49,12 +49,6 @@
 
   <canvas class="strip" id="strip" width="800" height="92"></canvas>
 
-  <div class="synb">
-    <label>Sync</label>
-    <input type="range" id="sync" min="-600" max="600" step="10" value="0">
-    <span class="val" id="syncVal">0 ms</span>
-  </div>
-
   <div class="synb" id="ovlBar">
     <button id="ovlLoad" style="border:1px solid #26345c;background:#141d3a;color:#eaf0fb;border-radius:9px;padding:9px 12px;font:600 12.5px system-ui">🎞️ Overlay</button>
     <input type="range" id="ovlAmt" min="0" max="100" step="5" value="85" style="flex:1;accent-color:#E0A33E">
@@ -93,7 +87,7 @@
 <script>
 "use strict";
 /* ================= État ================= */
-var A=null, PHOTOS=[], SEGS=[], MOOD="cinema", raf=0, playing=false, SYNC=0, LEAD=0.05;
+var A=null, PHOTOS=[], SEGS=[], MOOD="cinema", raf=0, playing=false, LEAD=0.05;
 var AC=window.AudioContext||window.webkitAudioContext;
 var ctx=null, AUDIOBUF=null, pausedOffset=0;
 var audioEl=null, audioURL="";
@@ -6476,7 +6470,7 @@ function paintStrip(t){
 }
 
 /* ================= Horloge audio + boucle ================= */
-function visualTime(){ return (audioEl?audioEl.currentTime:0) + LEAD + SYNC; }
+function visualTime(){ return (audioEl?audioEl.currentTime:0) + LEAD; }
 function loop(){
   if(!playing) return;
   var t=visualTime(); if(t<0) t=0;
@@ -6539,8 +6533,6 @@ ovlFile.onchange=function(e){ var fl=e.target.files&&e.target.files[0]; e.target
 };
 if(ovlAmt) ovlAmt.oninput=function(){ OVL.amt=(+ovlAmt.value)/100; };
 document.getElementById("ovlOff").onclick=function(){ OVL.on=false; try{ ovVid.pause(); }catch(e){} };
-var syncEl=document.getElementById("sync"), syncVal=document.getElementById("syncVal");
-syncEl.oninput=function(){ SYNC=(+syncEl.value)/1000; syncVal.textContent=(SYNC>0?"+":"")+Math.round(SYNC*1000)+" ms"; };
 document.querySelectorAll(".mood").forEach(function(btn){ btn.onclick=function(){ document.querySelectorAll(".mood").forEach(function(x){ x.classList.remove("on"); }); btn.classList.add("on"); MOOD=btn.dataset.mood; if(A&&PHOTOS.length){ buildPartition(); updateBadge(); paintStrip(playing?visualTime():0); } setState("Ambiance : <b>"+btn.textContent+"</b>"); }; });
 
 document.getElementById("fMusic").onchange=function(e){
