@@ -6267,6 +6267,20 @@ function bagPick(prefLists, idx){
   }
   return bagTake(_bag[idx%_bag.length]);
 }
+function audioFingerprint(A){
+  if(!A) return {energy:0.5,dyn:0.3,percuss:0.4,punchy:0.3,soft:0.4};
+  if(A._fp) return A._fp;
+  var e=A.energy||[], n=e.length, em=0, i;
+  for(i=0;i<n;i++) em+=e[i]; em=n?em/n:0.5;
+  var ev=0; for(i=0;i<n;i++){ var d=e[i]-em; ev+=d*d; } ev=n?Math.sqrt(ev/n):0;
+  var st=A.strength||[], sn=st.length, sm=0; for(i=0;i<sn;i++) sm+=st[i]; sm=sn?sm/sn:0.4;
+  var bps=(A.beats&&A.dur)?A.beats.length/A.dur:2;
+  var punchy=Math.max(0,Math.min(1, em*0.5 + sm*0.6 + Math.min(1,bps/3)*0.3 - 0.15));
+  var soft=Math.max(0,Math.min(1, 1 - (em*0.7 + sm*0.5)));
+  var dyn=Math.max(0,Math.min(1, ev*3));
+  A._fp={energy:em,dyn:dyn,percuss:sm,bps:bps,punchy:punchy,soft:soft};
+  return A._fp;
+}
 function gtChoose(idx,sg,prev,photos,energy,mood){
   var seed=(A&&A.beats)?(A.beats.length%89):0, k=idx+seed;
   var neutral={lum:0.5,warm:0,sat:0.3,detail:0.2,portrait:false};
@@ -6277,11 +6291,15 @@ function gtChoose(idx,sg,prev,photos,energy,mood){
   var dL=Math.abs(A2.lum-B.lum), dW=Math.abs(A2.warm-B.warm);
   var bothLand=(!A2.portrait&&!B.portrait), similar=(dL<0.14&&dW<0.10), portrait=(A2.portrait||B.portrait);
   var prof=MOODTRANS[mood]||MOODTRANS.cinema;
+  var fp=audioFingerprint(A);
   var specAllowed=(mood==="dynamique"?0.28:(mood==="cinema"?0.05:(mood==="voyage"?0.06:0.0)));
+  specAllowed=Math.max(0,Math.min(0.6, specAllowed*(0.55 + fp.punchy*0.9 + fp.dyn*0.5)));
+  var subRatio=prof.sub/(prof.sub+prof.ele);
+  subRatio=Math.max(0.10,Math.min(0.95, subRatio + fp.soft*0.22 - fp.punchy*0.22));
   var tier;
   if(e<0.25) tier="subtle";
   else if(strong && e>0.72 && specAllowed>0 && ((k*0.618)%1)<specAllowed*3) tier="spectacular";
-  else { var r=(k*0.618)%1; tier=(r < prof.sub/(prof.sub+prof.ele))?"subtle":"elegant"; }
+  else { var r=(k*0.618)%1; tier=(r < subRatio)?"subtle":"elegant"; }
   var prefs=[];
   if(tier==="subtle"){ if(dW>0.20) prefs=["colorphase","fadecolor","ColourDistance"]; else if(A2.detail>0.22&&B.detail>0.22) prefs=["dissolve","BlockDissolve","LinearBlur"]; else prefs=["fade","fadegrayscale","luma","StaticFade"]; }
   else if(tier==="elegant"){
@@ -6295,7 +6313,10 @@ function gtChoose(idx,sg,prev,photos,energy,mood){
     else if(e>0.8) prefs=["Swirl","pinwheel","ZoomInCircles","RotateScaleVanish","kaleidoscope"];
     else prefs=["CrossZoom","SimpleZoom","DirectionalScaled","cube","Radial"];
   }
-  var name=bagPick([prefs, TIERS[tier]||TIERS.subtle, GT_NAMES], k);
+  var fpFam = (fp.punchy>0.55)?["directionalwipe","cube","doorway","DirectionalScaled","SimpleZoom","angular","wipeLeft","wipeRight"]
+            : (fp.soft>0.55)?["dissolve","crosswarp","DefocusBlur","LinearBlur","fade","ColourDistance"]
+            : ["CrossZoom","directionalwarp","SimpleZoom","fade","dissolve"];
+  var name=bagPick([prefs, fpFam, TIERS[tier]||TIERS.subtle, GT_NAMES], k);
   sg.trDur=prof.dur;
   return name;
 }
