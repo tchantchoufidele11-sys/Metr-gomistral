@@ -6338,7 +6338,9 @@ function gtChoose(idx,sg,prev,photos,energy,mood){
   /* registre d'abord (garde le beat qui claque : surtout sobre) ; puis le lot du mode ; puis le réservoir général — panier sans répétition */
   var order=(k%3===0)?[modeTier, modeLot, GT_NAMES]:[prefsInLot, modeTier, modeLot, GT_NAMES];
   var name=bagPick(order, k);
-  sg.trDur=prof.dur;
+  var _bi=(A&&A.bpm>0)?60/A.bpm:0.5;
+  var _tf=Math.max(0.7,Math.min(2.0,_bi/0.5));   /* lent -> transition plus longue/douce ; rapide -> plus serrée */
+  sg.trDur=prof.dur*_tf;
   return name;
 }
 /* ==== Effets atmospheriques : shaders GPU proceduraux, dans le pipeline (panier + scene) ==== */
