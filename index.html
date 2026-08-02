@@ -295,7 +295,7 @@ function buildPartition(){
 
 /* ================= Rendu 2D ================= */
 var base=document.getElementById("base"), bctx=base.getContext("2d");
-function prerender(img,maxD){ try{ maxD=maxD||1280; w=img.width,h=img.height, sc=Math.min(1,maxD/Math.max(w,h,1)); var cw=Math.max(1,Math.round(w*sc)), ch=Math.max(1,Math.round(h*sc)); var c=document.createElement("canvas"); c.width=cw; c.height=ch; c.getContext("2d").drawImage(img,0,0,cw,ch); return c; }catch(e){ return img; } }
+function prerender(img,maxD){ try{ maxD=maxD||1280; var w=img.width||0,h=img.height||0; if(!w||!h) return null; var sc=Math.min(1,maxD/Math.max(w,h,1)); var cw=Math.max(1,Math.round(w*sc)), ch=Math.max(1,Math.round(h*sc)); var c=document.createElement("canvas"); c.width=cw; c.height=ch; var cx=c.getContext("2d"); if(!cx) return null; cx.drawImage(img,0,0,cw,ch); return c; }catch(e){ return null; } }
 function photoFeat(img){
   try{
     var c=document.createElement("canvas"); c.width=16; c.height=16; var x=c.getContext("2d"); x.drawImage(img,0,0,16,16);
@@ -324,6 +324,7 @@ function drawSegAt(sg,t,ox,smul){
   var Wd=base.width,Hd=base.height, cx=Wd/2, cy=Hd/2;
   if(!sg||sg.img<0||!PHOTOS[sg.img]){ bctx.fillStyle="#000"; bctx.fillRect(0,0,Wd,Hd); return; }
   var img=(PHOTOS[sg.img].c||PHOTOS[sg.img].img), dur=Math.max(0.001,sg.end-sg.start), p=Math.max(0,Math.min(1,(t-sg.start)/dur));
+  if(!img||!img.width){ bctx.fillStyle="#000"; bctx.fillRect(0,0,Wd,Hd); return; }
   var M=MOODS[MOOD];
   /* fond : image en cover, assombrie -> pas de bandes noires */
   bctx.save(); bctx.translate(ox,0);
@@ -6628,7 +6629,7 @@ document.getElementById("fPhotos").onchange=function(e){
   setState("Réception de "+total+" photos… traitement 0/"+total);
   var after=function(){ if(A) buildPartition(); updateBadge(); setState(PHOTOS.length+" photos chargées."); if(A&&PHOTOS.length){ paintStrip(playing?visualTime():0); if(typeof renderAt==="function") renderAt(playing?visualTime():0); } };
   function addThumb(c){ var el=document.getElementById("thumbs"); if(!el||!c) return; var tw=108, th=Math.max(1,Math.round(tw*(c.height||1)/(c.width||1))); var tc=document.createElement("canvas"); tc.width=tw; tc.height=th; try{ tc.getContext("2d").drawImage(c,0,0,tw,th); }catch(e){} tc.style.cssText="width:52px;height:auto;border-radius:6px;display:block;box-shadow:0 1px 3px rgba(0,0,0,.4)"; el.appendChild(tc); }
-  function add(src){ try{ var c=prerender(src,pmax); var _ft=photoFeat(c); PHOTOS.push({img:c,c:c,url:null,lum:_ft.lum,feat:_ft}); addThumb(c); if(src&&src.close){ try{ src.close(); }catch(x){} } }catch(x){} }
+  function add(src){ try{ var c=prerender(src,pmax); if(src&&src.close){ try{ src.close(); }catch(x){} } if(!c) return; var _ft=photoFeat(c); PHOTOS.push({img:c,c:c,url:null,lum:_ft.lum,feat:_ft}); addThumb(c); }catch(x){} }
   function finishOne(){ done++; setState("Traitement "+done+"/"+total); if(done>=total){ after(); } else { startNext(); } }
   function startNext(){
     if(idx>=total) return; var file=files[idx++];
