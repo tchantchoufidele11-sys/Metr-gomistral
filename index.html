@@ -6625,9 +6625,16 @@ document.getElementById("fMusic").onchange=function(e){
 function finishAnalyze(){
   if(!A){ setState("Analyse impossible."); return; }
   var eng=A.engine==="essentia"?"Essentia":"moteur maison";
-  if(A.bpm) setState("Moteur : <b>"+eng+"</b> · "+A.bpm+" BPM"+((A.bpmFelt&&A.bpmFelt!==A.bpm)?(" (ressenti "+A.bpmFelt+")"):"")+" · "+A.beats.length+" temps"+(A.engine==="essentia"&&A.conf?(" · confiance "+A.conf.toFixed(1)):"")+". Ajoute des photos puis « Lire ».");
+  var _calm=false;
+  if(A){
+    var _fb=A.bpm||100; while(_fb>145){ _fb/=2; } while(_fb<70){ _fb*=2; } _fb=Math.round(_fb);
+    /* facteur d'énergie : tempo élevé mais peu d'énergie -> traiter un cran plus calme (échelle moteur : 0.55 énergique, 0.25 calme) */
+    var _e=A.energy||[], _em=0, _i; for(_i=0;_i<_e.length;_i++) _em+=_e[_i]; _em=_e.length?_em/_e.length:0.4;
+    if(_fb>110 && _em<0.40){ var _k=(0.40-_em)/0.40; _fb=Math.round(_fb*(1-Math.min(0.20,_k*0.4))); _calm=true; }
+    A.bpmFelt=_fb; A._calm=_calm;
+  }
+  if(A.bpm) setState("Moteur : <b>"+eng+"</b> · "+A.bpm+" BPM"+((A.bpmFelt&&A.bpmFelt!==A.bpm)?(" (ressenti "+A.bpmFelt+(_calm?" · calme":"")+")"):(_calm?" (calme)":""))+" · "+A.beats.length+" temps"+(A.engine==="essentia"&&A.conf?(" · confiance "+A.conf.toFixed(1)):"")+". Ajoute des photos puis « Lire ».");
   else setState("Moteur : <b>"+eng+"</b> · pas de tempo net. Ajoute des photos puis « Lire ».");
-  if(A){ var _fb=A.bpm||100; while(_fb>145){ _fb/=2; } while(_fb<70){ _fb*=2; } A.bpmFelt=Math.round(_fb); }
   if(A){ A.peaks=[]; if(A.dur){ for(var _t=1.0; _t<A.dur; _t+=0.25){ var _r=energyAt(_t)-energyAt(_t-1.0); if(_r>0.18 && energyAt(_t)>0.5){ A.peaks.push(_t); _t+=1.4; } } } }
   recomputeSync();
   stripDirty=true; if(PHOTOS.length) buildPartition(); updateBadge(); paintStrip(0);
