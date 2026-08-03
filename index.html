@@ -247,7 +247,7 @@ var MZ_CODE=[
 "    self.postMessage({type:'emb',id:d.id,emb:arr,cls:cls.map(function(c){return {n:c.className,p:c.probability};})}); }",
 "  catch(err){ self.postMessage({type:'err',id:d.id}); } };"
 ].join("\n");
-var NONPHOTO=["web site","website","monitor","screen","envelope","menu","book jacket","comic book","packet","binder","notebook","laptop","desktop computer","hand-held computer","digital clock","typewriter","crossword"];
+var NONPHOTO=["web site","website","monitor","screen","envelope","menu","book jacket","comic book","packet","binder","notebook","laptop","desktop computer","hand-held computer","digital clock","typewriter","crossword","compass","digital watch","odometer","slot","remote control","hard disc","modem","ipod","cellular telephone"];
 function evalPhoto(p,cls){ if(!p||!p.feat||!cls||!cls.length) return; var top=cls[0]||{}; var n=(top.n||"").toLowerCase(), non=false;
   for(var i=0;i<NONPHOTO.length;i++){ if(n.indexOf(NONPHOTO[i])>=0){ non=true; break; } }
   if(non && (top.p||0)>0.35){ p.feat.skip=true; p.feat.label=top.n; if(p._thumb){ try{ p._thumb.style.opacity="0.28"; p._thumb.style.filter="grayscale(1)"; p._thumb.title="écartée : "+top.n; }catch(e){} } }
@@ -6696,9 +6696,12 @@ document.getElementById("fPhotos").onchange=function(e){
   var total=files.length, done=0, idx=0, CONC=4;
   var pmax=(total>120)?900:((total>60)?1100:1280);
   setState("Réception de "+total+" photos… traitement 0/"+total);
-  var after=function(){ if(A) buildPartition(); updateBadge(); setState(PHOTOS.length+" photos chargées."); if(A&&PHOTOS.length) paintStrip(playing?visualTime():0); embedPhotos(); };
+  var after=function(){ if(A) buildPartition(); updateBadge(); var _ns=countSkipped(); setState(PHOTOS.length+" photos chargées"+(_ns>0?(" · "+_ns+" écartée(s)"):"")); if(A&&PHOTOS.length) paintStrip(playing?visualTime():0); embedPhotos(); };
   function addThumb(c){ var el=document.getElementById("thumbs"); if(!el||!c) return; var tw=108, th=Math.max(1,Math.round(tw*(c.height||1)/(c.width||1))); var tc=document.createElement("canvas"); tc.width=tw; tc.height=th; try{ tc.getContext("2d").drawImage(c,0,0,tw,th); }catch(e){} tc.style.cssText="width:52px;height:auto;border-radius:6px;display:block;box-shadow:0 1px 3px rgba(0,0,0,.4)"; el.appendChild(tc); return tc; }
-  function add(src){ try{ var c=prerender(src,pmax); if(src&&src.close){ try{ src.close(); }catch(x){} } if(!c) return; var _ft=photoFeat(c); PHOTOS.push({img:c,c:c,url:null,lum:_ft.lum,feat:_ft}); PHOTOS[PHOTOS.length-1]._thumb=addThumb(c); }catch(x){} }
+  function add(src){ try{ var c=prerender(src,pmax); if(src&&src.close){ try{ src.close(); }catch(x){} } if(!c) return; var _ft=photoFeat(c); PHOTOS.push({img:c,c:c,url:null,lum:_ft.lum,feat:_ft}); var _th=addThumb(c); var _p=PHOTOS[PHOTOS.length-1]; _p._thumb=_th;
+      var _asp=c.width/(c.height||1);
+      if(_asp<0.50 || _asp>2.1){ _ft.skip=true; _ft.label="format écran"; if(_th){ try{ _th.style.opacity="0.28"; _th.style.filter="grayscale(1)"; _th.title="écartée : format écran"; }catch(e){} } }
+    }catch(x){} }
   function finishOne(){ done++; setState("Traitement "+done+"/"+total); if(done>=total){ after(); } else { startNext(); } }
   function startNext(){
     if(idx>=total) return; var file=files[idx++];
