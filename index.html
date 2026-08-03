@@ -241,15 +241,24 @@ var MZ_CODE=[
 "  try{ await tf.ready(); model=await mobilenet.load({version:2,alpha:0.5}); self.postMessage({type:'ready'}); }catch(err){ self.postMessage({type:'fail'}); }",
 "})();",
 "self.onmessage=async function(e){ var d=e.data; if(d.type!=='embed'||!model) return;",
-"  try{ var emb=tf.tidy(function(){ var t=tf.browser.fromPixels(d.imageData); return model.infer(t,true); }); var arr=await emb.data(); emb.dispose(); self.postMessage({type:'emb',id:d.id,emb:Array.prototype.slice.call(arr)}); }",
+"  try{ var t=tf.browser.fromPixels(d.imageData);",
+"    var embT=model.infer(t,true); var arr=Array.prototype.slice.call(await embT.data()); embT.dispose();",
+"    var cls=await model.classify(t,3); t.dispose();",
+"    self.postMessage({type:'emb',id:d.id,emb:arr,cls:cls.map(function(c){return {n:c.className,p:c.probability};})}); }",
 "  catch(err){ self.postMessage({type:'err',id:d.id}); } };"
 ].join("\n");
+var NONPHOTO=["web site","website","monitor","screen","envelope","menu","book jacket","comic book","packet","binder","notebook","laptop","desktop computer","hand-held computer","digital clock","typewriter","crossword"];
+function evalPhoto(p,cls){ if(!p||!p.feat||!cls||!cls.length) return; var top=cls[0]||{}; var n=(top.n||"").toLowerCase(), non=false;
+  for(var i=0;i<NONPHOTO.length;i++){ if(n.indexOf(NONPHOTO[i])>=0){ non=true; break; } }
+  if(non && (top.p||0)>0.35){ p.feat.skip=true; p.feat.label=top.n; if(p._thumb){ try{ p._thumb.style.opacity="0.28"; p._thumb.style.filter="grayscale(1)"; p._thumb.title="écartée : "+top.n; }catch(e){} } }
+}
+function countSkipped(){ var n=0; for(var i=0;i<PHOTOS.length;i++){ if(PHOTOS[i].feat&&PHOTOS[i].feat.skip) n++; } return n; }
 function initMZ(){
   try{ var blob=new Blob([MZ_CODE],{type:"application/javascript"}); MZ.worker=new Worker(URL.createObjectURL(blob)); }
   catch(e){ MZ.worker=null; return; }
   MZ.worker.onmessage=function(e){ var d=e.data;
     if(d.type==="ready"){ MZ.ready=true; embedPhotos(); }
-    else if(d.type==="emb"){ var p=MZ.map[d.id]; if(p&&p.feat){ p.feat.emb=Float32Array.from(d.emb); } delete MZ.map[d.id]; scheduleReorder(); }
+    else if(d.type==="emb"){ var p=MZ.map[d.id]; if(p&&p.feat){ p.feat.emb=Float32Array.from(d.emb); evalPhoto(p,d.cls); } delete MZ.map[d.id]; scheduleReorder(); }
     else if(d.type==="err"){ delete MZ.map[d.id]; }
   };
   MZ.worker.onerror=function(){};
@@ -261,16 +270,17 @@ function embedPhotos(){
       var idata=cx.getImageData(0,0,224,224); var id=MZ.seq++; p._sent=id; MZ.map[id]=p; MZ.worker.postMessage({type:"embed", id:id, imageData:idata}); }catch(e){}
   }
 }
-function scheduleReorder(){ if(MZ.timer) clearTimeout(MZ.timer); MZ.timer=setTimeout(function(){ MZ.timer=null; if(A&&PHOTOS.length){ buildPartition(); paintStrip(playing?visualTime():0); } }, 350); }
+function scheduleReorder(){ if(MZ.timer) clearTimeout(MZ.timer); MZ.timer=setTimeout(function(){ MZ.timer=null; if(A&&PHOTOS.length){ buildPartition(); paintStrip(playing?visualTime():0); } var _ns=countSkipped(); if(_ns>0) setState(PHOTOS.length+" photos · "+_ns+" écartée(s) (captures/documents)"); }, 350); }
 initMZ();
 function computePhotoOrder(){
-  var N=PHOTOS.length, i; var order=[]; for(i=0;i<N;i++) order.push(i);
-  if(N<=2) return order;
-  /* 1) regrouper les photos par SUJET (empreinte IA si dispo, sinon signature pixels) */
-  var cl=new Array(N), reps=[];
-  for(i=0;i<N;i++){ var best=-1;
-    for(var g=0;g<reps.length;g++){ if(tooSimilar(i, reps[g])){ best=g; break; } }
-    if(best>=0){ cl[i]=best; } else { cl[i]=reps.length; reps.push(i); }
+  var N=PHOTOS.length, i; var order=[]; for(i=0;i<N;i++){ if(!(PHOTOS[i].feat&&PHOTOS[i].feat.skip)) order.push(i); }
+  if(order.length===0){ for(i=0;i<N;i++) order.push(i); }   /* sécurité : ne jamais tout vider */
+  if(order.length<=2) return order;
+  /* 1) regrouper les photos GARDÉES par SUJET (empreinte IA si dispo, sinon signature pixels) */
+  var cl={}, reps=[];
+  for(i=0;i<order.length;i++){ var pi=order[i], best=-1;
+    for(var g=0;g<reps.length;g++){ if(tooSimilar(pi, reps[g])){ best=g; break; } }
+    if(best>=0){ cl[pi]=best; } else { cl[pi]=reps.length; reps.push(pi); }
   }
   /* 2) ordre chronologique avec REFROIDISSEMENT par sujet : un sujet ne revient pas avant K photos */
   var K=Math.max(1, Math.min(4, reps.length-1));
@@ -6687,8 +6697,8 @@ document.getElementById("fPhotos").onchange=function(e){
   var pmax=(total>120)?900:((total>60)?1100:1280);
   setState("Réception de "+total+" photos… traitement 0/"+total);
   var after=function(){ if(A) buildPartition(); updateBadge(); setState(PHOTOS.length+" photos chargées."); if(A&&PHOTOS.length) paintStrip(playing?visualTime():0); embedPhotos(); };
-  function addThumb(c){ var el=document.getElementById("thumbs"); if(!el||!c) return; var tw=108, th=Math.max(1,Math.round(tw*(c.height||1)/(c.width||1))); var tc=document.createElement("canvas"); tc.width=tw; tc.height=th; try{ tc.getContext("2d").drawImage(c,0,0,tw,th); }catch(e){} tc.style.cssText="width:52px;height:auto;border-radius:6px;display:block;box-shadow:0 1px 3px rgba(0,0,0,.4)"; el.appendChild(tc); }
-  function add(src){ try{ var c=prerender(src,pmax); if(src&&src.close){ try{ src.close(); }catch(x){} } if(!c) return; var _ft=photoFeat(c); PHOTOS.push({img:c,c:c,url:null,lum:_ft.lum,feat:_ft}); addThumb(c); }catch(x){} }
+  function addThumb(c){ var el=document.getElementById("thumbs"); if(!el||!c) return; var tw=108, th=Math.max(1,Math.round(tw*(c.height||1)/(c.width||1))); var tc=document.createElement("canvas"); tc.width=tw; tc.height=th; try{ tc.getContext("2d").drawImage(c,0,0,tw,th); }catch(e){} tc.style.cssText="width:52px;height:auto;border-radius:6px;display:block;box-shadow:0 1px 3px rgba(0,0,0,.4)"; el.appendChild(tc); return tc; }
+  function add(src){ try{ var c=prerender(src,pmax); if(src&&src.close){ try{ src.close(); }catch(x){} } if(!c) return; var _ft=photoFeat(c); PHOTOS.push({img:c,c:c,url:null,lum:_ft.lum,feat:_ft}); PHOTOS[PHOTOS.length-1]._thumb=addThumb(c); }catch(x){} }
   function finishOne(){ done++; setState("Traitement "+done+"/"+total); if(done>=total){ after(); } else { startNext(); } }
   function startNext(){
     if(idx>=total) return; var file=files[idx++];
