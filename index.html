@@ -266,14 +266,21 @@ initMZ();
 function computePhotoOrder(){
   var N=PHOTOS.length, i; var order=[]; for(i=0;i<N;i++) order.push(i);
   if(N<=2) return order;
-  var remaining=order.slice(), out=[];
+  /* 1) regrouper les photos par SUJET (empreinte IA si dispo, sinon signature pixels) */
+  var cl=new Array(N), reps=[];
+  for(i=0;i<N;i++){ var best=-1;
+    for(var g=0;g<reps.length;g++){ if(tooSimilar(i, reps[g])){ best=g; break; } }
+    if(best>=0){ cl[i]=best; } else { cl[i]=reps.length; reps.push(i); }
+  }
+  /* 2) ordre chronologique avec REFROIDISSEMENT par sujet : un sujet ne revient pas avant K photos */
+  var K=Math.max(1, Math.min(4, reps.length-1));
+  var remaining=order.slice(), out=[], recent=[];
   while(remaining.length){
-    var last=out.length?out[out.length-1]:-1, prev=out.length>1?out[out.length-2]:-1, pos=-1;
-    for(var j=0;j<remaining.length;j++){
-      if(((last<0)||!tooSimilar(remaining[j],last)) && ((prev<0)||!tooSimilar(remaining[j],prev))){ pos=j; break; }
-    }
-    if(pos<0) pos=0;
-    out.push(remaining[pos]); remaining.splice(pos,1);
+    var pos=-1;
+    for(var j=0;j<remaining.length;j++){ if(recent.indexOf(cl[remaining[j]])<0){ pos=j; break; } }
+    if(pos<0) pos=0;                 /* tous les sujets restants sont "récents" -> on prend le 1er (chronologie) */
+    var idx=remaining[pos]; out.push(idx); remaining.splice(pos,1);
+    recent.push(cl[idx]); if(recent.length>K) recent.shift();
   }
   return out;
 }
