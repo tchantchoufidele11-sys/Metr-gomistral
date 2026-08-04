@@ -25,6 +25,7 @@
 <body>
 <div class="wrap">
   <h1>Test export RAPIDE (image + son + MP4)</h1>
+  <div style="display:inline-block;background:#1f6f43;color:#eafff0;font:700 11px ui-monospace,monospace;padding:3px 8px;border-radius:6px;margin-bottom:6px">V2 · sélecteur SANS filtre (MP3 OK)</div>
   <p class="sub">Chaîne complète façon CapCut : on encode ~6 s d'animation + ta musique, on assemble un vrai <b>.mp4</b>, le plus vite possible.</p>
 
   <canvas id="c" width="540" height="960"></canvas>
@@ -37,7 +38,7 @@
 
   <p class="sub" style="margin-top:14px">On vérifie : (1) mux MP4 chargé, (2) encodeur <b>audio AAC</b> dispo sur iPhone, (3) fichier <b>lisible avec le son</b>, (4) <b>vitesse</b> (× temps réel).</p>
 
-  <input type="file" id="fAudio" accept="audio/*">
+  <input type="file" id="fAudio">
 </div>
 <script>
 "use strict";
