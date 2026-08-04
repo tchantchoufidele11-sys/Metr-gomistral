@@ -420,7 +420,7 @@ function drawSegAt(sg,t,ox,smul){
   ox=ox||0; smul=smul||1;
   var Wd=base.width,Hd=base.height, cx=Wd/2, cy=Hd/2;
   if(!sg){ bctx.fillStyle="#000"; bctx.fillRect(0,0,Wd,Hd); return; }
-  var _clip=(!EXPORTING && sg.video && sg.vclip!=null && CLIPS[sg.vclip] && CLIPS[sg.vclip].ready) ? CLIPS[sg.vclip] : null;
+  var _clip=(sg.video && sg.vclip!=null && CLIPS[sg.vclip] && CLIPS[sg.vclip].ready) ? CLIPS[sg.vclip] : null;
   var isVid=(_clip && _clip.el.videoWidth>0);
   var img, iw, ih;
   if(isVid){ img=_clip.el; iw=_clip.el.videoWidth; ih=_clip.el.videoHeight; }
@@ -6779,6 +6779,13 @@ document.getElementById("fPhotos").onchange=function(e){
 
 /* init */
 /* ===== EXPORT RAPIDE (WebCodecs + mux MP4 + son) ===== */
+function seekClip(el, time){ return new Promise(function(res){
+  var done=false, fin=function(){ if(!done){ done=true; el.onseeked=null; res(); } };
+  var useR=(typeof el.requestVideoFrameCallback==="function");
+  el.onseeked=function(){ if(useR){ try{ el.requestVideoFrameCallback(function(){ fin(); }); }catch(e){ fin(); } } else { setTimeout(fin,16); } };
+  try{ el.currentTime=time; }catch(e){ fin(); }
+  setTimeout(fin,220);
+}); }
 function makeASC(sampleRate, channels){ var m={96000:0,88200:1,64000:2,48000:3,44100:4,32000:5,24000:6,22050:7,16000:8,12000:9,11025:10,8000:11,7350:12}; var fi=(m[sampleRate]!=null)?m[sampleRate]:4; var b0=(2<<3)|(fi>>1); var b1=((fi&1)<<7)|((channels&15)<<3); return new Uint8Array([b0,b1]); }
 function renderMontageAt(t){
   if(t<0)t=0;
@@ -6817,10 +6824,18 @@ async function exportFast(){
   var muxer=new Mp4Muxer.Muxer(mo);
   var venc=new VideoEncoder({ output:function(chunk,meta){ muxer.addVideoChunk(chunk,meta); }, error:function(e){} });
   venc.configure(vcfg);
+  for(var _wc=0;_wc<CLIPS.length;_wc++){ if(CLIPS[_wc]&&CLIPS[_wc].ready){ try{ CLIPS[_wc].el.muted=true; var _wp=CLIPS[_wc].el.play(); if(_wp&&_wp.then){ await _wp.catch(function(){}); } CLIPS[_wc].el.pause(); }catch(e){} } }
   var t0=performance.now();
   try{
     for(var fnum=0; fnum<N; fnum++){
-      renderMontageAt(fnum/FPS);
+      var _t=fnum/FPS;
+      var _si=-1; for(var _q=0;_q<SEGS.length;_q++){ if(_t>=SEGS[_q].start && _t<SEGS[_q].end){ _si=_q; break; } }
+      var _sg=(_si>=0)?SEGS[_si]:null;
+      if(_sg && _sg.video && _sg.vclip!=null && CLIPS[_sg.vclip] && CLIPS[_sg.vclip].ready){
+        var _cl=CLIPS[_sg.vclip], _vt=(_sg.vstart||0)+(_t-_sg.start); _vt=Math.max(0,Math.min((_cl.dur||0.1)-0.05,_vt));
+        await seekClip(_cl.el, _vt);
+      }
+      renderMontageAt(_t);
       var frame=new VideoFrame(glReady?gl.canvas:base,{timestamp:Math.round(fnum*1000000/FPS), duration:Math.round(1000000/FPS)});
       venc.encode(frame,{keyFrame:(fnum%FPS===0)}); frame.close();
       if((fnum&15)===0) expShow(fnum/N*0.9);
