@@ -6807,7 +6807,6 @@ async function exportFast(){
   var W=540,H=960,FPS=30;
   var DUR=Math.max(1, Math.min(A.dur||6, SEGS.length?SEGS[SEGS.length-1].end:(A.dur||6)));
   var N=Math.round(DUR*FPS);
-  var exp=document.createElement("canvas"); exp.width=W; exp.height=H; var ex=exp.getContext("2d");
   var vcfg=null, vc=["avc1.640028","avc1.4D4028","avc1.42E01F","avc1.42E01E"];
   for(var i=0;i<vc.length;i++){ var cfg={codec:vc[i],width:W,height:H,bitrate:6000000,framerate:FPS}; try{ if(!VideoEncoder.isConfigSupported||(await VideoEncoder.isConfigSupported(cfg)).supported){ vcfg=cfg; break; } }catch(e){} }
   if(!vcfg){ EXPORTING=false; expHide(); setState("Codec vidéo non supporté."); return; }
@@ -6822,10 +6821,10 @@ async function exportFast(){
   try{
     for(var fnum=0; fnum<N; fnum++){
       renderMontageAt(fnum/FPS);
-      ex.drawImage(glReady?gl.canvas:base,0,0,W,H);
-      var frame=new VideoFrame(exp,{timestamp:Math.round(fnum*1000000/FPS), duration:Math.round(1000000/FPS)});
+      var frame=new VideoFrame(glReady?gl.canvas:base,{timestamp:Math.round(fnum*1000000/FPS), duration:Math.round(1000000/FPS)});
       venc.encode(frame,{keyFrame:(fnum%FPS===0)}); frame.close();
-      if(fnum%5===4){ expShow(fnum/N*0.9); await new Promise(function(r){ setTimeout(r,0); }); }
+      if((fnum&15)===0) expShow(fnum/N*0.9);
+      if(venc.encodeQueueSize>6 || (fnum&63)===63){ await new Promise(function(r){ setTimeout(r,0); }); }
     }
     await venc.flush(); venc.close();
   }catch(e){ EXPORTING=false; expHide(); setState("Échec export image : "+((e&&e.message)||e)); return; }
