@@ -105,12 +105,12 @@
     <div id="expPct" style="font:600 13px ui-monospace,monospace;color:#E0A33E;margin-top:10px">0 %</div>
     <div style="font:12px system-ui;color:#9fb0d0;margin-top:10px">Laisse l'écran allumé quelques secondes.</div>
   </div>
-  <div id="expRes" style="display:none;position:fixed;inset:0;z-index:50;background:rgba(6,10,22,.94);backdrop-filter:blur(4px);flex-direction:column;padding:18px;overflow:auto">
-    <div style="font:700 16px system-ui;color:#fff;text-align:center;margin:6px 0 10px">Ta vidéo est prête 🎬</div>
-    <video id="expVideo" controls playsinline style="width:100%;max-width:420px;margin:0 auto;border-radius:12px;background:#000"></video>
-    <div id="expInfo" style="font:600 12px ui-monospace,monospace;color:#7bd88f;text-align:center;margin:10px 0"></div>
-    <button class="btn gold" id="expShare" style="max-width:420px;margin:0 auto">⬇ Enregistrer / Partager</button>
-    <button class="btn" id="expClose" style="max-width:420px;margin:8px auto 0">Fermer</button>
+  <div id="expRes" style="display:none;position:fixed;inset:0;z-index:50;background:rgba(6,10,22,.94);backdrop-filter:blur(4px);padding:18px 18px 30px;overflow:auto;text-align:center">
+    <div style="font:700 16px system-ui;color:#fff;margin:6px 0 10px">Ta vidéo est prête 🎬</div>
+    <video id="expVideo" controls playsinline style="display:block;width:100%;max-width:420px;margin:0 auto;border-radius:12px;background:#000"></video>
+    <div id="expInfo" style="font:600 12px ui-monospace,monospace;color:#7bd88f;margin:10px 0"></div>
+    <button class="btn gold" id="expShare" style="display:block;width:100%;max-width:420px;margin:0 auto">⬇ Enregistrer / Partager</button>
+    <button class="btn" id="expClose" style="display:block;width:100%;max-width:420px;margin:8px auto 0">Fermer</button>
   </div>
 
   <div id="state" class="hint"></div>
@@ -6881,10 +6881,18 @@ async function exportFast(){
     var a=document.createElement("a"); a.href=url; a.download="magot-voyage.mp4"; document.body.appendChild(a); a.click(); a.remove();
   };
   var cl=document.getElementById("expClose"); if(cl) cl.onclick=function(){ document.getElementById("expRes").style.display="none"; try{ URL.revokeObjectURL(url); }catch(e){} };
-  document.getElementById("expRes").style.display="flex";
+  document.getElementById("expRes").style.display="block";
 }
 (function(){ var row=document.getElementById("fmtRow"); if(!row) return; var bs=row.querySelectorAll(".fmt");
-  for(var i=0;i<bs.length;i++){ (function(b){ b.onclick=function(){ for(var j=0;j<bs.length;j++) bs[j].classList.remove("on"); b.classList.add("on"); EXPFMT={w:+b.getAttribute("data-w"),h:+b.getAttribute("data-h"),name:b.getAttribute("data-n")}; var eb=document.getElementById("exportBtn"); if(eb) eb.textContent="⚡ Exporter la vidéo ("+EXPFMT.name+")"; }; })(bs[i]); }
+  function setFormat(w,h,name,btn){
+    for(var j=0;j<bs.length;j++) bs[j].classList.remove("on"); if(btn) btn.classList.add("on");
+    EXPFMT={w:w,h:h,name:name};
+    var sw=document.querySelector(".stageWrap"); if(sw) sw.style.aspectRatio=w+" / "+h;
+    setRenderSize(w,h);
+    try{ if(A&&SEGS.length) renderMontageAt(playing?visualTime():0); else if(glReady){ gl.clearColor(0,0,0,1); gl.clear(gl.COLOR_BUFFER_BIT); } }catch(e){}
+    var eb=document.getElementById("exportBtn"); if(eb) eb.textContent="⚡ Exporter la vidéo ("+name+")";
+  }
+  for(var i=0;i<bs.length;i++){ (function(b){ b.onclick=function(){ setFormat(+b.getAttribute("data-w"),+b.getAttribute("data-h"),b.getAttribute("data-n"),b); }; })(bs[i]); }
 })();
 var _eb=document.getElementById("exportBtn"); if(_eb) _eb.onclick=function(){ exportFast(); };
 initGL(); paintStrip(0); updateBadge();
