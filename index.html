@@ -425,6 +425,23 @@ function beatPulse(t){
   var env=1-best/W; env=env*env;
   return s*env;
 }
+var _blurC=document.createElement("canvas"), _blurX=_blurC.getContext("2d");
+function drawBlurCover(img,iw,ih,Wd,Hd){
+  try{ var bw=34, bh=Math.max(1,Math.round(bw*ih/iw)); if(_blurC.width!==bw||_blurC.height!==bh){ _blurC.width=bw; _blurC.height=bh; }
+    _blurX.clearRect(0,0,bw,bh); _blurX.drawImage(img,0,0,bw,bh);
+    var rc=Math.max(Wd/bw,Hd/bh), wc=bw*rc, hc=bh*rc;
+    bctx.imageSmoothingEnabled=true; bctx.drawImage(_blurC,(Wd-wc)/2,(Hd-hc)/2,wc,hc); return true;
+  }catch(e){ return false; }
+}
+function docScore(c){
+  try{ var s=48, cv=document.createElement("canvas"); cv.width=s; cv.height=s; var x=cv.getContext("2d"); x.drawImage(c,0,0,s,s);
+    var d=x.getImageData(0,0,s,s).data, n=s*s, lum=0, sat=0, gray=new Float32Array(n);
+    for(var i=0,pp=0;i<d.length;i+=4,pp++){ var r=d[i],g=d[i+1],b=d[i+2], mx=Math.max(r,g,b), mn=Math.min(r,g,b); lum+=(0.299*r+0.587*g+0.114*b); sat+=(mx>0?(mx-mn)/mx:0); gray[pp]=(r+g+b)/3; }
+    lum/=(n*255); sat/=n;
+    var edges=0; for(var y=1;y<s-1;y++){ for(var xx=1;xx<s-1;xx++){ var idx=y*s+xx; if(Math.abs(gray[idx-1]-gray[idx+1])+Math.abs(gray[idx-s]-gray[idx+s])>45) edges++; } }
+    return { lum:lum, sat:sat, edge:edges/n };
+  }catch(e){ return null; }
+}
 function drawSegAt(sg,t,ox,smul){
   ox=ox||0; smul=smul||1;
   var Wd=base.width,Hd=base.height, cx=Wd/2, cy=Hd/2;
@@ -438,8 +455,7 @@ function drawSegAt(sg,t,ox,smul){
   var M=MOODS[MOOD];
   /* fond : image en cover, assombrie -> pas de bandes noires */
   bctx.save(); bctx.translate(ox,0);
-  var rc=Math.max(Wd/iw,Hd/ih)*1.14, wc=iw*rc, hc=ih*rc;
-  bctx.drawImage(img,(Wd-wc)/2,(Hd-hc)/2,wc,hc);
+  if(!drawBlurCover(img,iw,ih,Wd,Hd)){ var rc=Math.max(Wd/iw,Hd/ih)*1.14; bctx.drawImage(img,(Wd-iw*rc)/2,(Hd-ih*rc)/2,iw*rc,ih*rc); }
   bctx.fillStyle="rgba(0,0,0,0.5)"; bctx.fillRect(0,0,Wd,Hd);
   bctx.restore();
   /* mouvement camera PRO, lisse sur toute la duree du plan (Ken Burns), sans battement */
@@ -6775,6 +6791,7 @@ document.getElementById("fPhotos").onchange=function(e){
   function add(src){ try{ var c=prerender(src,pmax); if(src&&src.close){ try{ src.close(); }catch(x){} } if(!c) return; var _ft=photoFeat(c); PHOTOS.push({img:c,c:c,url:null,lum:_ft.lum,feat:_ft}); var _th=addThumb(c); var _p=PHOTOS[PHOTOS.length-1]; _p._thumb=_th;
       var _asp=c.width/(c.height||1);
       if(_asp<0.50 || _asp>2.1){ _ft.skip=true; _ft.label="format écran"; if(_th){ try{ _th.style.opacity="0.28"; _th.style.filter="grayscale(1)"; _th.title="écartée : format écran"; }catch(e){} } }
+      if(!_ft.skip){ var _ds=docScore(c); if(_ds && _ds.lum>0.60 && _ds.sat<0.13 && _ds.edge>0.10){ _ft.skip=true; _ft.label="document"; if(_th){ try{ _th.style.opacity="0.28"; _th.style.filter="grayscale(1)"; _th.title="écartée : document"; }catch(e){} } } }
     }catch(x){} }
   function finishOne(){ done++; setState("Traitement "+done+"/"+total); if(done>=total){ after(); } else { startNext(); } }
   function startNext(){
