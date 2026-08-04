@@ -3,122 +3,158 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
-<title>Test encodage rapide — Magot</title>
+<title>Test export rapide — Magot</title>
+<script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.1/build/mp4-muxer.min.js"></script>
 <style>
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;background:#0a1024;color:#eef2f9;font:15px/1.4 -apple-system,system-ui,sans-serif}
   .wrap{max-width:460px;margin:0 auto;padding:14px 14px 46px}
   h1{font:700 18px Georgia,serif;color:#fff;margin:6px 0 2px}
   .sub{color:#9fb0d0;font-size:12.5px;margin:0 0 12px}
-  canvas{width:60%;aspect-ratio:9/16;border-radius:12px;background:#000;display:block;margin:0 auto;box-shadow:0 8px 24px rgba(0,0,0,.5)}
-  .btn{width:100%;border:1px solid #26345c;background:#141d3a;color:#eaf0fb;border-radius:11px;padding:14px;font:600 15px system-ui;margin-top:12px}
+  canvas{width:52%;aspect-ratio:9/16;border-radius:12px;background:#000;display:block;margin:0 auto;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+  .btn{width:100%;border:1px solid #26345c;background:#141d3a;color:#eaf0fb;border-radius:11px;padding:14px;font:600 15px system-ui;margin-top:10px}
   .btn.gold{background:#E0A33E;color:#241603;border-color:#E0A33E}
   .btn:disabled{opacity:.45}
-  #cap{margin-top:12px;padding:12px;background:#0e1830;border:1px solid #223258;border-radius:10px;font:12.5px ui-monospace,monospace;color:#c7d3ee;white-space:pre-wrap;min-height:120px}
+  #cap{margin-top:12px;padding:12px;background:#0e1830;border:1px solid #223258;border-radius:10px;font:12.5px ui-monospace,monospace;color:#c7d3ee;white-space:pre-wrap;min-height:90px}
   .ok{color:#7bd88f}.bad{color:#ff8a8a}.warn{color:#E0A33E}.big{font-size:15px;font-weight:700}
+  a.dl{display:block;text-align:center;margin-top:8px;color:#E0A33E;font-weight:600;text-decoration:none;border:1px solid #E0A33E;border-radius:11px;padding:12px}
+  video.out{width:100%;border-radius:12px;margin-top:8px;background:#000}
+  input[type=file]{display:none}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Test encodage rapide (WebCodecs)</h1>
-  <p class="sub">On vérifie si ton iPhone sait encoder une vidéo <b>plus vite que le temps réel</b> (façon CapCut). On encode 120 images (≈4 s de film) et on mesure le temps réel que ça prend.</p>
+  <h1>Test export RAPIDE (image + son + MP4)</h1>
+  <p class="sub">Chaîne complète façon CapCut : on encode ~6 s d'animation + ta musique, on assemble un vrai <b>.mp4</b>, le plus vite possible.</p>
 
-  <canvas id="c" width="270" height="480"></canvas>
+  <canvas id="c" width="540" height="960"></canvas>
 
-  <button class="btn gold" id="run" disabled>⚡ Lancer le test d'encodage (120 images)</button>
+  <button class="btn" id="pickAudio">🎵 Choisir une musique</button>
+  <button class="btn gold" id="run" disabled>⚡ Exporter (rapide)</button>
 
   <div id="cap">Diagnostic au chargement…</div>
+  <div id="result"></div>
 
-  <p class="sub" style="margin-top:14px">Ce qui compte : le <b>facteur de vitesse</b>. Ex. « 4 s de film encodées en 1 s » = <b>4× plus rapide</b> que le temps réel → export quasi instantané façon CapCut.</p>
+  <p class="sub" style="margin-top:14px">On vérifie : (1) mux MP4 chargé, (2) encodeur <b>audio AAC</b> dispo sur iPhone, (3) fichier <b>lisible avec le son</b>, (4) <b>vitesse</b> (× temps réel).</p>
+
+  <input type="file" id="fAudio" accept="audio/*">
 </div>
 <script>
 "use strict";
-var c=document.getElementById("c"), x=c.getContext("2d"), cap=document.getElementById("cap"), runBtn=document.getElementById("run");
+var c=document.getElementById("c"), x=c.getContext("2d"), cap=document.getElementById("cap"), result=document.getElementById("result");
+var runBtn=document.getElementById("run");
+var audioFile=null;
+var W=540,H=960, FPS=30, SECONDS=6, N=FPS*SECONDS;
+
 function line(t,cls){ var s=document.createElement("div"); if(cls)s.className=cls; s.textContent=t; cap.appendChild(s); }
 function clr(){ cap.innerHTML=""; }
 
-var W=270,H=480, FPS=30, N=120;   // 120 images @30fps = 4 s de "film"
+var MUX = (typeof Mp4Muxer!=="undefined") ? Mp4Muxer : (typeof window!=="undefined"? window.Mp4Muxer : null);
 
 function diag(){
   clr();
-  var hasVE=(typeof VideoEncoder!=="undefined");
-  line(hasVE?"✔ VideoEncoder présent (encodeur matériel accessible).":"❌ VideoEncoder ABSENT sur ce Safari.", hasVE?"ok":"bad");
-  var hasVF=(typeof VideoFrame!=="undefined");
-  line(hasVF?"✔ VideoFrame présent.":"❌ VideoFrame absent.", hasVF?"ok":"bad");
-  if(!hasVE||!hasVF){ line("→ L'encodage rapide n'est pas possible ici. On restera sur l'export temps réel.","warn"); runBtn.disabled=true; return; }
-  runBtn.disabled=false;
-  line("On peut tenter le test. Appuie sur le bouton.","");
+  line((MUX&&MUX.Muxer)?"✔ mux MP4 chargé.":"❌ librairie mux MP4 non chargée (réseau/CDN ?).",(MUX&&MUX.Muxer)?"ok":"bad");
+  line((typeof VideoEncoder!=="undefined")?"✔ VideoEncoder présent.":"❌ VideoEncoder absent.",(typeof VideoEncoder!=="undefined")?"ok":"bad");
+  line((typeof AudioEncoder!=="undefined")?"✔ AudioEncoder présent (son rapide possible).":"⚠ AudioEncoder absent → export sans son en mode rapide.",(typeof AudioEncoder!=="undefined")?"ok":"warn");
+  line("Choisis une musique puis lance l'export.","");
 }
+
+document.getElementById("pickAudio").onclick=function(){ document.getElementById("fAudio").click(); };
+document.getElementById("fAudio").onchange=function(e){ audioFile=e.target.files&&e.target.files[0]; e.target.value=""; if(audioFile){ line("musique : "+audioFile.name,"ok"); runBtn.disabled=false; } };
 
 function drawFrame(i){
   var t=i/FPS*1000;
   var g=x.createLinearGradient(0,0,0,H); g.addColorStop(0,"#12233f"); g.addColorStop(1,"#7c6a52"); x.fillStyle=g; x.fillRect(0,0,W,H);
-  var cx=W/2+Math.cos(t/500)*W*0.3, cy=H/2+Math.sin(t/700)*H*0.22;
-  x.fillStyle="#E0A33E"; x.beginPath(); x.arc(cx,cy,40,0,Math.PI*2); x.fill();
-  x.fillStyle="#fff"; x.font="bold 16px sans-serif"; x.textAlign="center"; x.fillText("image "+(i+1)+"/"+N, W/2, 30);
+  var cx=W/2+Math.cos(t/500)*W*0.28, cy=H/2+Math.sin(t/700)*H*0.2;
+  x.fillStyle="#E0A33E"; x.beginPath(); x.arc(cx,cy,80,0,Math.PI*2); x.fill();
+  x.fillStyle="#fff"; x.font="bold 30px sans-serif"; x.textAlign="center"; x.fillText("MAGOT — export rapide", W/2, 70);
+  x.font="600 22px ui-monospace,monospace"; x.fillText((i/FPS).toFixed(1)+" s", W/2, H-70);
 }
 
-async function checkConfig(){
-  var configs=[
-    {codec:"avc1.42E01E", name:"H.264 baseline"},
-    {codec:"avc1.4D401E", name:"H.264 main"},
-    {codec:"avc1.640028", name:"H.264 high"}
-  ];
-  for(var i=0;i<configs.length;i++){
-    var cfg={codec:configs[i].codec, width:W, height:H, bitrate:2500000, framerate:FPS};
-    try{
-      if(VideoEncoder.isConfigSupported){
-        var res=await VideoEncoder.isConfigSupported(cfg);
-        if(res && res.supported){ line("✔ codec supporté : "+configs[i].name+" ("+configs[i].codec+")","ok"); return cfg; }
-      } else { return cfg; }
-    }catch(e){}
-  }
+async function videoConfig(){
+  var cands=["avc1.42E01E","avc1.4D401E","avc1.640028"];
+  for(var i=0;i<cands.length;i++){ var cfg={codec:cands[i],width:W,height:H,bitrate:5000000,framerate:FPS};
+    try{ if(!VideoEncoder.isConfigSupported || (await VideoEncoder.isConfigSupported(cfg)).supported) return cfg; }catch(e){} }
   return null;
 }
 
+async function decodeAudio(file, seconds){
+  var ab=await file.arrayBuffer();
+  var actx=new (window.AudioContext||window.webkitAudioContext)();
+  var buf=await actx.decodeAudioData(ab.slice(0));
+  try{ actx.close(); }catch(e){}
+  var sr=buf.sampleRate, ch=Math.min(2,buf.numberOfChannels);
+  var total=Math.min(buf.length, Math.floor(seconds*sr));
+  var chans=[]; for(var i=0;i<ch;i++) chans.push(buf.getChannelData(i));
+  return {sr:sr, ch:ch, total:total, chans:chans};
+}
+
 runBtn.onclick=async function(){
-  clr(); runBtn.disabled=true;
-  line("Vérification du codec H.264…","");
-  var cfg=await checkConfig();
-  if(!cfg){ line("❌ aucun codec H.264 accepté par l'encodeur. Export rapide impossible ici.","bad"); line("→ On gardera l'export temps réel.","warn"); runBtn.disabled=false; return; }
+  result.innerHTML=""; clr(); runBtn.disabled=true;
+  if(!MUX||!MUX.Muxer){ line("❌ mux MP4 indisponible.","bad"); runBtn.disabled=false; return; }
+  if(typeof VideoEncoder==="undefined"){ line("❌ VideoEncoder indisponible.","bad"); runBtn.disabled=false; return; }
 
-  var count=0, errored=false, bytes=0;
-  var encoder;
-  try{
-    encoder=new VideoEncoder({
-      output:function(chunk,meta){ count++; bytes+=chunk.byteLength; },
-      error:function(e){ errored=true; line("❌ erreur encodeur : "+e,"bad"); }
-    });
-    encoder.configure(cfg);
-  }catch(e){ line("❌ configure a échoué : "+e,"bad"); runBtn.disabled=false; return; }
-
-  line("⚡ encodage de "+N+" images en cours…","warn");
   var t0=performance.now();
-  try{
-    for(var i=0;i<N;i++){
-      drawFrame(i);
-      var frame=new VideoFrame(c,{timestamp:Math.round(i*1000000/FPS), duration:Math.round(1000000/FPS)});
-      encoder.encode(frame, {keyFrame:(i%30===0)});
-      frame.close();
-      // laisser respirer la file toutes les 20 images
-      if(i%20===19){ await new Promise(function(r){ setTimeout(r,0); }); }
-    }
-    await encoder.flush();
-  }catch(e){ line("❌ pendant l'encodage : "+e,"bad"); runBtn.disabled=false; return; }
-  var dt=(performance.now()-t0)/1000;
-  try{ encoder.close(); }catch(e){}
+  var vcfg=await videoConfig();
+  if(!vcfg){ line("❌ aucun codec vidéo H.264 accepté.","bad"); runBtn.disabled=false; return; }
 
-  if(errored){ runBtn.disabled=false; return; }
-  var filmSec=N/FPS;
-  var speed=filmSec/dt;
+  // audio : décoder d'abord pour connaître sr/ch (nécessaire au muxer)
+  var A=null, useAudio=(audioFile && typeof AudioEncoder!=="undefined");
+  if(useAudio){
+    try{ line("décodage de la musique…","warn"); A=await decodeAudio(audioFile, SECONDS);
+      var acfg={codec:"mp4a.40.2", sampleRate:A.sr, numberOfChannels:A.ch, bitrate:128000};
+      if(AudioEncoder.isConfigSupported){ var sup=await AudioEncoder.isConfigSupported(acfg); if(!sup||!sup.supported){ line("⚠ AAC non supporté par l'encodeur → export sans son.","warn"); useAudio=false; } }
+    }catch(err){ line("⚠ audio non décodable ("+err+") → export sans son.","warn"); useAudio=false; }
+  } else if(audioFile){ line("⚠ AudioEncoder absent → export sans son (mode rapide).","warn"); }
+
+  // muxer
+  var muxOpts={ target:new MUX.ArrayBufferTarget(), fastStart:"in-memory", video:{codec:"avc", width:W, height:H} };
+  if(useAudio) muxOpts.audio={codec:"aac", numberOfChannels:A.ch, sampleRate:A.sr};
+  var muxer=new MUX.Muxer(muxOpts);
+
+  // encodeur vidéo
+  var venc=new VideoEncoder({ output:function(chunk,meta){ muxer.addVideoChunk(chunk,meta); }, error:function(e){ line("❌ vidéo : "+e,"bad"); } });
+  venc.configure(vcfg);
+  line("⚡ encodage image…","warn");
+  for(var i=0;i<N;i++){ drawFrame(i);
+    var frame=new VideoFrame(c,{timestamp:Math.round(i*1000000/FPS), duration:Math.round(1000000/FPS)});
+    venc.encode(frame,{keyFrame:(i%30===0)}); frame.close();
+    if(i%20===19){ await new Promise(function(r){ setTimeout(r,0); }); }
+  }
+  await venc.flush(); venc.close();
+
+  // encodeur audio
+  if(useAudio){
+    line("⚡ encodage du son (AAC)…","warn");
+    try{
+      var aenc=new AudioEncoder({ output:function(chunk,meta){ muxer.addAudioChunk(chunk,meta); }, error:function(e){ line("⚠ audio : "+e,"warn"); } });
+      aenc.configure({codec:"mp4a.40.2", sampleRate:A.sr, numberOfChannels:A.ch, bitrate:128000});
+      var frameSize=1024;
+      for(var off=0; off<A.total; off+=frameSize){
+        var n=Math.min(frameSize, A.total-off);
+        var data=new Float32Array(n*A.ch);
+        for(var cc=0;cc<A.ch;cc++){ data.set(A.chans[cc].subarray(off,off+n), cc*n); }
+        var adata=new AudioData({format:"f32-planar", sampleRate:A.sr, numberOfFrames:n, numberOfChannels:A.ch, timestamp:Math.round(off*1000000/A.sr), data:data});
+        aenc.encode(adata); adata.close();
+      }
+      await aenc.flush(); aenc.close();
+    }catch(err){ line("⚠ son non encodé ("+err+") → vidéo seule.","warn"); }
+  }
+
+  muxer.finalize();
+  var buffer=muxer.target.buffer;
+  var dt=(performance.now()-t0)/1000;
+  var blob=new Blob([buffer],{type:"video/mp4"});
+  var url=URL.createObjectURL(blob);
+
+  var speed=SECONDS/dt;
   line("","");
-  line("✔ "+count+" images encodées · "+(bytes/1024).toFixed(0)+" Ko","ok");
-  line(filmSec.toFixed(1)+" s de film encodées en "+dt.toFixed(2)+" s réelles","big");
-  if(speed>=1.5) line("⚡ VITESSE : "+speed.toFixed(1)+"× plus rapide que le temps réel — export façon CapCut POSSIBLE !","ok big");
-  else if(speed>=0.9) line("≈ VITESSE : "+speed.toFixed(1)+"× (proche du temps réel) — gain limité.","warn big");
-  else line("🐌 VITESSE : "+speed.toFixed(1)+"× (plus lent que le temps réel) — l'encodage rapide n'aide pas ici.","warn big");
-  line("","");
-  line("(Ce test encode l'image seule. Le mux MP4 + le son s'ajouteront à l'intégration.)","");
+  line("✔ MP4 produit : "+(blob.size/1024/1024).toFixed(2)+" Mo"+(useAudio?" (avec son)":" (sans son)"), useAudio?"ok":"warn");
+  line(SECONDS+" s de film exportées en "+dt.toFixed(2)+" s","big");
+  line((speed>=1.5?"⚡ ":"")+"VITESSE : "+speed.toFixed(1)+"× le temps réel", speed>=1.5?"ok big":"warn big");
+
+  var v=document.createElement("video"); v.className="out"; v.controls=true; v.playsInline=true; v.src=url; result.appendChild(v);
+  var a=document.createElement("a"); a.className="dl"; a.href=url; a.download="magot-export.mp4"; a.textContent="⬇ Télécharger / Partager le MP4"; result.appendChild(a);
   runBtn.disabled=false;
 };
 
