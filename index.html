@@ -72,7 +72,7 @@ function drawFrame(i){
 }
 
 async function videoConfig(){
-  var cands=["avc1.42E01E","avc1.4D401E","avc1.640028"];
+  var cands=["avc1.640028","avc1.4D4028","avc1.640020","avc1.4D401F","avc1.42E01F","avc1.42E01E"];   /* niveau 4.0/3.x pour 540x960 */
   for(var i=0;i<cands.length;i++){ var cfg={codec:cands[i],width:W,height:H,bitrate:5000000,framerate:FPS};
     try{ if(!VideoEncoder.isConfigSupported || (await VideoEncoder.isConfigSupported(cfg)).supported) return cfg; }catch(e){} }
   return null;
@@ -80,8 +80,15 @@ async function videoConfig(){
 
 async function decodeAudio(file, seconds){
   var ab=await file.arrayBuffer();
-  var actx=new (window.AudioContext||window.webkitAudioContext)();
-  var buf=await actx.decodeAudioData(ab.slice(0));
+  var Ctx=(window.AudioContext||window.webkitAudioContext);
+  var actx=new Ctx();
+  try{ if(actx.state==="suspended") await actx.resume(); }catch(e){}
+  var buf=await new Promise(function(res,rej){
+    var done=false;
+    try{ var p=actx.decodeAudioData(ab.slice(0), function(b){ done=true; res(b); }, function(e){ done=true; rej(e||new Error("decode")); });
+      if(p&&p.then) p.then(function(b){ if(!done) res(b); }, function(e){ if(!done) rej(e); });
+    }catch(e){ rej(e); }
+  });
   try{ actx.close(); }catch(e){}
   var sr=buf.sampleRate, ch=Math.min(2,buf.numberOfChannels);
   var total=Math.min(buf.length, Math.floor(seconds*sr));
