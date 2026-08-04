@@ -79,6 +79,14 @@ async function videoConfig(){
   return null;
 }
 
+function makeASC(sampleRate, channels){
+  var idxMap={96000:0,88200:1,64000:2,48000:3,44100:4,32000:5,24000:6,22050:7,16000:8,12000:9,11025:10,8000:11,7350:12};
+  var f=(idxMap[sampleRate]!=null)?idxMap[sampleRate]:4;
+  var obj=2; /* AAC LC */
+  var b0=(obj<<3)|(f>>1);
+  var b1=((f&1)<<7)|((channels&15)<<3);
+  return new Uint8Array([b0,b1]);
+}
 function tryDecode(ctx, ab){ return new Promise(function(res,rej){ var done=false; var ok=function(b){ if(!done){done=true; res(b);} }; var ko=function(e){ if(!done){done=true; rej(e||new Error("decode null"));} }; try{ var p=ctx.decodeAudioData(ab, ok, ko); if(p&&p.then) p.then(ok,ko); }catch(e){ ko(e); } }); }
 async function decodeAudio(file, seconds){
   var ab=await file.arrayBuffer();
@@ -135,7 +143,10 @@ runBtn.onclick=async function(){
   if(useAudio){
     line("⚡ encodage du son (AAC)…","warn");
     try{
-      var aenc=new AudioEncoder({ output:function(chunk,meta){ muxer.addAudioChunk(chunk,meta); }, error:function(e){ line("⚠ audio : "+e,"warn"); } });
+      var aenc=new AudioEncoder({ output:function(chunk,meta){
+        try{ if(meta&&meta.decoderConfig){ meta.decoderConfig.description=makeASC(A.sr,A.ch); } else { meta={decoderConfig:{description:makeASC(A.sr,A.ch)}}; } }catch(e){}
+        muxer.addAudioChunk(chunk,meta);
+      }, error:function(e){ line("⚠ audio : "+e,"warn"); } });
       aenc.configure({codec:"mp4a.40.2", sampleRate:A.sr, numberOfChannels:A.ch, bitrate:128000});
       var frameSize=1024;
       for(var off=0; off<A.total; off+=frameSize){
