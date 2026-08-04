@@ -115,6 +115,7 @@
 
   <div id="state" class="hint"></div>
   <div id="thumbs" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px"></div>
+  <div class="hint" style="margin-top:6px">Astuce : <b>tape une vignette</b> pour l'écarter du montage (grisée) ou la réinclure. L'IA grise déjà les captures détectées ; tu gardes le dernier mot.</div>
   <p class="hint">La bande montre les temps (dorés = temps forts) et les points de coupe. La tête de lecture blanche doit croiser une coupe pile quand la photo change. S'il reste un décalage, ajuste le curseur <b>Sync</b> pendant la lecture.</p>
 
   <input type="file" id="fMusic">
@@ -285,6 +286,8 @@ function evalPhoto(p,cls){ if(!p||!p.feat||!cls||!cls.length) return; var top=cl
   if(non && (top.p||0)>0.35){ p.feat.skip=true; p.feat.label=top.n; if(p._thumb){ try{ p._thumb.style.opacity="0.28"; p._thumb.style.filter="grayscale(1)"; p._thumb.title="écartée : "+top.n; }catch(e){} } }
 }
 function countSkipped(){ var n=0; for(var i=0;i<PHOTOS.length;i++){ if(PHOTOS[i].feat&&PHOTOS[i].feat.skip) n++; } return n; }
+function applySkipStyle(p,th){ if(!th||!p||!p.feat) return; try{ if(p.feat.skip){ th.style.opacity="0.28"; th.style.filter="grayscale(1)"; th.title="écartée — tape pour réinclure"; } else { th.style.opacity="1"; th.style.filter="none"; th.title="incluse — tape pour écarter"; } }catch(e){} }
+function toggleSkip(p,th){ if(!p||!p.feat) return; p.feat.skip=!p.feat.skip; applySkipStyle(p,th); if(A&&PHOTOS.length){ try{ buildPartition(); paintStrip(playing?visualTime():0); }catch(e){} } var ns=countSkipped(); if(A) setState(PHOTOS.length+" photos"+(ns>0?(" · "+ns+" écartée(s)"):"")+" — tape une vignette pour l'inclure/l'écarter."); }
 function initMZ(){
   try{ var blob=new Blob([MZ_CODE],{type:"application/javascript"}); MZ.worker=new Worker(URL.createObjectURL(blob)); }
   catch(e){ MZ.worker=null; return; }
@@ -6789,7 +6792,7 @@ document.getElementById("fPhotos").onchange=function(e){
   setState("Réception de "+total+" photos… traitement 0/"+total);
   var after=function(){ if(A) buildPartition(); updateBadge(); var _ns=countSkipped(); setState(PHOTOS.length+" photos chargées"+(_ns>0?(" · "+_ns+" écartée(s)"):"")); if(A&&PHOTOS.length) paintStrip(playing?visualTime():0); embedPhotos(); };
   function addThumb(c){ var el=document.getElementById("thumbs"); if(!el||!c) return; var tw=108, th=Math.max(1,Math.round(tw*(c.height||1)/(c.width||1))); var tc=document.createElement("canvas"); tc.width=tw; tc.height=th; try{ tc.getContext("2d").drawImage(c,0,0,tw,th); }catch(e){} tc.style.cssText="width:52px;height:auto;border-radius:6px;display:block;box-shadow:0 1px 3px rgba(0,0,0,.4)"; el.appendChild(tc); return tc; }
-  function add(src){ try{ var c=prerender(src,pmax); if(src&&src.close){ try{ src.close(); }catch(x){} } if(!c) return; var _ft=photoFeat(c); PHOTOS.push({img:c,c:c,url:null,lum:_ft.lum,feat:_ft}); var _th=addThumb(c); var _p=PHOTOS[PHOTOS.length-1]; _p._thumb=_th;
+  function add(src){ try{ var c=prerender(src,pmax); if(src&&src.close){ try{ src.close(); }catch(x){} } if(!c) return; var _ft=photoFeat(c); PHOTOS.push({img:c,c:c,url:null,lum:_ft.lum,feat:_ft}); var _th=addThumb(c); var _p=PHOTOS[PHOTOS.length-1]; _p._thumb=_th; if(_th){ _th.style.cursor="pointer"; _th.addEventListener("click",function(){ toggleSkip(_p,_th); }); }
       var _asp=c.width/(c.height||1);
       if(_asp<0.50 || _asp>2.1){ _ft.skip=true; _ft.label="format écran"; if(_th){ try{ _th.style.opacity="0.28"; _th.style.filter="grayscale(1)"; _th.title="écartée : format écran"; }catch(e){} } }
     }catch(x){} }
