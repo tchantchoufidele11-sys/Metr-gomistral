@@ -55,9 +55,9 @@ body{display:flex;justify-content:center}
 }
 .header{flex:0 0 46px}
 .hero{flex:1 1 0;min-height:150px}
-.info{flex:0 0 58px}
+.info{flex:0 0 66px}
 .section{flex:0 0 auto}
-.s-seq{flex:0 0 106px}
+.s-seq{flex:0 0 112px}
 .s-src{flex:0 0 64px}
 .s-amb{flex:0 0 54px}
 .actions-wrap{flex:0 0 52px;position:relative}
@@ -91,12 +91,12 @@ body{display:flex;justify-content:center}
 
 /* Info — 4 colonnes */
 .info{display:grid;grid-template-columns:repeat(4,1fr);overflow:hidden;border:1px solid var(--line);border-radius:15px;background:linear-gradient(180deg,#111e2d,#0b1725)}
-.info>div{display:grid;place-items:center;gap:2px;padding:8px 4px;border-right:1px solid var(--line)}
+.info>div{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 4px;border-right:1px solid var(--line);min-width:0}
 .info>div:last-child{border-right:0}
 .info .ico{color:var(--gold);display:grid;place-items:center}
 .info .ico svg{width:16px;height:16px}
-.info b{font-size:11.5px;white-space:nowrap}
-.info small{font-size:10px;color:var(--muted)}
+.info b{font-size:11.5px;white-space:nowrap;line-height:1.1}
+.info small{font-size:9.5px;color:var(--muted);line-height:1.1;white-space:nowrap}
 
 /* Sections */
 .section{min-width:0;display:grid;grid-template-rows:20px 1fr}
@@ -114,7 +114,7 @@ body{display:flex;justify-content:center}
 .clip span{position:absolute;right:3px;bottom:3px;font:600 9px ui-monospace,monospace;padding:1px 4px;border-radius:4px;background:rgba(0,0,0,.6)}
 .sep{flex:0 0 auto;width:24px;display:grid;place-items:center}
 .sep i{width:20px;height:20px;border-radius:6px;background:#0a1220;border:1px solid var(--line);display:grid;place-items:center;font-size:10px;font-style:normal;color:#aeb9cc}
-.wave{height:44px;padding:0;overflow:hidden;border:1px solid rgba(141,86,223,.28);border-radius:9px;background:#0e1630}
+.wave{height:52px;padding:0;overflow:hidden;border:1px solid rgba(141,86,223,.28);border-radius:9px;background:#0e1630}
 #strip{width:100%!important;height:100%!important;display:block!important}
 .wave i{display:block;width:2px;border-radius:2px;background:var(--purple)}
 .syncline{display:flex;align-items:center;gap:9px}
@@ -277,7 +277,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 @media (max-height:760px){
   .app{gap:6px}
   .s-seq{flex-basis:98px}.s-src{flex-basis:60px}.s-amb{flex-basis:50px}
-  .info{flex-basis:54px}.actions-wrap{flex-basis:46px}.hero{min-height:100px}
+  .info{flex-basis:62px}.actions-wrap{flex-basis:46px}.hero{min-height:100px}
   .hero-copy h2{font-size:17px}.brand h1{font-size:20px}
   .watch{height:44px;font-size:14px}
   .ia-on-btn{width:36px;height:36px}
@@ -351,7 +351,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
     <div class="sources">
       <article class="source" data-sheet="music">
         <div class="ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg></div>
-        <div class="tx"><h4>Musique</h4><p id="srcMus">Ye Nomtema</p></div><span class="chev">›</span>
+        <div class="tx"><h4>Musique</h4><p id="srcMus">—</p></div><span class="chev">›</span>
       </article>
       <article class="source" data-sheet="photos">
         <div class="ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>
@@ -7400,7 +7400,7 @@ var vg=document.getElementById("vgrid");
 vg.appendChild(el("div","addtile",icoLib.plus+'<span>Ajouter</span>'));
 
 /* musique : telecharger -> utiliser */
-var tracks=[["Ye Nomtema — André Marie Tala","2:45",true,true,true],["Aventure","3:10",false,false,false],["Souvenir","2:38",false,false,false],["Peace & Perfection","3:52",false,false,false],["Le rite du désert","4:05",false,false,false],["Echoes of grace","3:20",false,false,false]];
+var tracks=[];
 var ml=document.getElementById("mlist");
 function renderMusic(){ ml.innerHTML="";
   tracks.forEach(function(t,idx){ var name=t[0],dur=t[1],dl=t[2],sel=t[3],def=t[4];
@@ -7480,6 +7480,17 @@ try{window.__kToggle=togglePlay;}catch(e){}
   if(kS&&eS){ kS.oninput=function(){ eS.value=kS.value; eS.dispatchEvent(new Event('input')); if(kSV) kSV.textContent=(kS.value>0?'+':'')+kS.value+' ms'; }; }
   var kRs=$('syncRs'); if(kRs) kRs.onclick=function(){ if(eR) eR.click(); if(kS) kS.value=0; if(kSV) kSV.textContent='0 ms'; };
 
+  /* 3b) seek : glisser sur la barre de progression */
+  (function(){
+    var row=q('.hero .progress-row'), trk=q('.hero .trk'); if(!row||!trk) return;
+    function seekAt(x){ var A=window.A; if(!A||!A.dur||!window.audioEl) return; var r=trk.getBoundingClientRect(); var f=Math.max(0,Math.min(1,(x-r.left)/(r.width||1))); try{ window.audioEl.currentTime=f*A.dur; }catch(e){} var fl=q('.hero .trk span'); if(fl) fl.style.width=(f*100)+'%'; }
+    var sk=false;
+    row.style.cursor='pointer'; row.style.touchAction='none';
+    row.addEventListener('pointerdown',function(e){ sk=true; seekAt(e.clientX); try{row.setPointerCapture(e.pointerId);}catch(x){} e.preventDefault(); });
+    row.addEventListener('pointermove',function(e){ if(sk) seekAt(e.clientX); });
+    window.addEventListener('pointerup',function(){ sk=false; });
+  })();
+
   /* 4) Photos : vrai #thumbs + Ajouter (tap-exclure conservé par le moteur) */
   var ps=q('.sheet-bg[data-bg="photos"] .sh-body');
   if(ps){
@@ -7502,14 +7513,16 @@ try{window.__kToggle=togglePlay;}catch(e){}
   if(ms){
     var mb=document.createElement('button'); mb.className='doexp'; mb.style.margin='0 0 14px'; mb.innerHTML='＋ Charger une musique (test)'; mb.onclick=function(){ var f=$('fMusic'); if(f) f.click(); };
     ms.insertBefore(mb, ms.firstChild);
+    var mnote=q('.sheet-bg[data-bg="music"] .sh-note'); if(mnote) mnote.innerHTML="Biblioth\u00e8que cur\u00e9e par l'administrateur \u2014 \u00e0 venir. Pour tester, charge une musique avec le bouton ci-dessus ; le r\u00e9alisateur cale les coupes sur son tempo.";
   }
+  var fmEl=$('fMusic'); if(fmEl) fmEl.addEventListener('change',function(){ if(this.files&&this.files[0]){ var nm=this.files[0].name.replace(/\.[^.]+$/,''); var sm=$('srcMus'); if(sm) sm.textContent=nm; } });
 
   /* 7) Ambiance -> mode moteur (fiabilisé + retour) */
   var moodMap={'cin\u00e9ma':'cinema','cinema':'cinema','doux':'doux','voyage':'voyage','dynamique':'dynamique'};
   function applyMood(nm){
     var md=moodMap[(nm||'').toLowerCase()]||'cinema';
     var mbn=document.querySelector('.mood[data-mood="'+md+'"]');
-    if(mbn){ mbn.click(); if(window.showToast) window.showToast('Ambiance : '+nm+' appliqu\u00e9e'); return true; }
+    if(mbn){ mbn.click(); try{ if(window.paintStrip) window.paintStrip((window.playing&&window.visualTime)?window.visualTime():0); }catch(e){} if(window.showToast) window.showToast('Ambiance : '+nm+' appliqu\u00e9e'); return true; }
     return false;
   }
   document.querySelectorAll('.choice').forEach(function(ch){
@@ -7542,7 +7555,7 @@ try{window.__kToggle=togglePlay;}catch(e){}
       var cur=(window.audioEl?window.audioEl.currentTime:0)||0;
       var frac=A.dur?Math.min(1,cur/A.dur):0;
       var fill=q('.hero .trk span'); if(fill) fill.style.width=(frac*100).toFixed(1)+'%';
-      var ts=document.querySelectorAll('.hero .progress-row span'); if(ts[0]) ts[0].textContent=fmt(cur); if(ts[1]&&A.dur) ts[1].textContent=fmt(A.dur);
+      var ts=document.querySelectorAll('.hero .progress-row > span'); if(ts[0]) ts[0].textContent=fmt(cur); if(ts[1]&&A.dur) ts[1].textContent=fmt(A.dur);
       var h3=q('.s-seq .title h3'); if(h3){ var np=(window.SEGS&&window.SEGS.length)||0; if(np) h3.textContent='S\u00c9QUENCE \u2014 '+np+' PLANS'; }
       var bpm=A.bpmFelt||A.bpm||0;
       if(infoDivs[1]){ var bb=infoDivs[1].querySelector('b'); if(bb&&bpm) bb.textContent=Math.round(bpm)+' BPM'; }
@@ -7552,7 +7565,7 @@ try{window.__kToggle=togglePlay;}catch(e){}
     syncIcons();
   }catch(e){} }, 250);
   /* progression fluide */
-  setInterval(function(){ try{ var A=window.A; if(A&&A.dur){ var cur=(window.audioEl?window.audioEl.currentTime:0)||0; var fr=Math.min(1,cur/A.dur); var f=q('.hero .trk span'); if(f) f.style.width=(fr*100).toFixed(1)+'%'; var ts=document.querySelectorAll('.hero .progress-row span'); if(ts[0]) ts[0].textContent=fmt(cur); } }catch(e){} }, 200);
+  setInterval(function(){ try{ var A=window.A; if(A&&A.dur){ var cur=(window.audioEl?window.audioEl.currentTime:0)||0; var fr=Math.min(1,cur/A.dur); var f=q('.hero .trk span'); if(f) f.style.width=(fr*100).toFixed(1)+'%'; var ts=document.querySelectorAll('.hero .progress-row > span'); if(ts[0]) ts[0].textContent=fmt(cur); } }catch(e){} }, 200);
 })();
 </script>
 </body>
