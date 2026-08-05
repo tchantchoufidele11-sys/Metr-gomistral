@@ -74,7 +74,9 @@ body{display:flex;justify-content:center}
 .export{height:40px;border:0;border-radius:13px;color:#171008;font-weight:800;font-size:13.5px;background:linear-gradient(135deg,#f1b63a,#d99a22);display:flex;align-items:center;justify-content:center;gap:5px}
 
 /* Hero */
-.hero{position:relative;overflow:hidden;border-radius:18px;border:1px solid rgba(255,255,255,.10);background:linear-gradient(165deg,#33465e 0%,#c9925a 44%,#182231 78%,#0a1017 100%)}
+.hero{position:relative;overflow:hidden;border-radius:16px;border:none;background:transparent}
+.hero .hero-copy{display:none}
+.hero.cinema{position:fixed!important;inset:0!important;z-index:60!important;border-radius:0!important;background:#000!important}
 .hero>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .hero .veil{position:absolute;inset:0;background:linear-gradient(to top,rgba(2,7,13,.86),transparent 46%)}
 .hero-top{position:absolute;z-index:2;left:11px;right:11px;top:11px;display:flex;justify-content:space-between}
@@ -284,7 +286,8 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 
 /* ==== GREFFE : UI moteur hors-écran ==== */
 .wrap{position:absolute!important;left:-99999px!important;top:0!important;width:430px!important;opacity:0!important}
-.hero canvas#base,.hero canvas#gl{position:absolute!important;inset:0!important;top:0!important;left:0!important;width:100%!important;height:100%!important;max-width:none!important;object-fit:contain!important;transform:none!important;z-index:1!important;border-radius:0!important}
+.hero canvas#base,.hero canvas#gl{position:absolute!important;inset:auto!important;top:0!important;left:50%!important;height:100%!important;width:auto!important;max-width:100%!important;transform:translateX(-50%)!important;object-fit:contain!important;z-index:1!important;border-radius:14px!important}
+.hero.cinema canvas#base,.hero.cinema canvas#gl{border-radius:0!important}
 
 </style>
 </head>
@@ -7454,7 +7457,7 @@ try{window.__kToggle=togglePlay;}catch(e){}
     var vl=hero.querySelector('.veil'); if(vl) vl.style.display='none';
     var kk=hero.querySelector('.kicker'); if(kk) kk.style.display='none';
     var hh=hero.querySelector('h2'); if(hh) hh.style.display='none';
-    hero.style.background='#000';
+    hero.style.background='transparent'; var _hc=hero.querySelector('.hero-copy'); if(_hc) _hc.style.display='none';
     var b=$('base'), g=$('gl');
     if(b) hero.appendChild(b);
     if(g) hero.appendChild(g);
@@ -7516,6 +7519,16 @@ try{window.__kToggle=togglePlay;}catch(e){}
 
   /* 9) IA : recalcul du réalisateur */
   var ia=$('iaBtn'); if(ia) ia.onclick=function(e){ e.stopPropagation(); var rb=$('restart'); if(rb) rb.click(); if(window.showToast) window.showToast('⚡ Montage recalculé'); };
+
+
+  /* 11) cosmétiques branchés */
+  var closeBtn=document.querySelector('.header .round');
+  if(closeBtn) closeBtn.onclick=function(){ try{ if(window.playing){ var ep=$('play'); if(ep) ep.click(); } }catch(e){} if(window.showToast) window.showToast('Studio fermé (démo)'); };
+  var heroTopBtns=hero?hero.querySelectorAll('.iconbtn'):[];
+  var fsBtn=heroTopBtns[1]||heroTopBtns[0];
+  if(fsBtn) fsBtn.onclick=function(){ if(hero){ hero.classList.toggle('cinema'); if(window.showToast) window.showToast(hero.classList.contains('cinema')?'Plein écran':'Aperçu normal'); } };
+  var showAll=document.querySelector('.s-seq .title button');
+  if(showAll) showAll.onclick=function(){ try{ var A=window.A,n=(window.SEGS&&window.SEGS.length)||0,bpm=A?Math.round(A.bpmFelt||A.bpm||0):0,md=window.MOOD||'—'; if(window.showToast) window.showToast(n+' plans · '+(bpm?bpm+' BPM':'—')+' · mode '+md); }catch(e){} };
 
   /* 10) fiche BPM / plans / durée depuis l'état moteur */
   setInterval(function(){ try{
