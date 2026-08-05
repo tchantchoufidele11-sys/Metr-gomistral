@@ -37,8 +37,407 @@
   .fmt.on{background:#E0A33E;color:#241603;border-color:#E0A33E}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.1/build/mp4-muxer.min.js"></script>
+<style id="kimiCSS">
+
+:root{
+  --bg:#030b14;--panel:#0e1a29;--panel2:#122033;--text:#f5f7fb;--muted:#9ca8b8;
+  --gold:#e5aa34;--gold2:#f4bd4a;--purple:#8b57df;--line:rgba(255,255,255,.08)
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button{font:inherit;color:inherit}
+body{display:flex;justify-content:center}
+.app{
+  width:min(100vw,430px);height:100svh;overflow:hidden;display:flex;flex-direction:column;
+  gap:7px;
+  padding:max(8px,env(safe-area-inset-top)) 13px max(10px,env(safe-area-inset-bottom));
+  background:radial-gradient(circle at 50% -12%,rgba(42,73,108,.20),transparent 34%),linear-gradient(180deg,#020a13,#03101a 60%,#020910);
+}
+.header{flex:0 0 46px}
+.hero{flex:1 1 0;min-height:150px}
+.info{flex:0 0 58px}
+.section{flex:0 0 auto}
+.s-seq{flex:0 0 88px}
+.s-src{flex:0 0 64px}
+.s-amb{flex:0 0 54px}
+.actions-wrap{flex:0 0 52px;position:relative}
+
+/* Header */
+.header{display:grid;grid-template-columns:84px 1fr 112px;align-items:center;gap:6px}
+.header-left{display:flex;gap:7px}
+.round{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:#fff;background:#0b1623;border:1px solid var(--line);font-size:19px}
+.round.spark{color:var(--gold2)}
+.brand{text-align:center;line-height:1}
+.brand h1{margin:0;font-family:Georgia,serif;font-size:21px;color:var(--gold2);white-space:nowrap}
+.brand h1 i{font-style:normal;font-size:14px}
+.brand p{margin:4px 0 0;font-size:11px;color:#b3bdc9}
+.export{height:40px;border:0;border-radius:13px;color:#171008;font-weight:800;font-size:13.5px;background:linear-gradient(135deg,#f1b63a,#d99a22);display:flex;align-items:center;justify-content:center;gap:5px}
+
+/* Hero */
+.hero{position:relative;overflow:hidden;border-radius:18px;border:1px solid rgba(255,255,255,.10);background:linear-gradient(165deg,#33465e 0%,#c9925a 44%,#182231 78%,#0a1017 100%)}
+.hero>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.hero .veil{position:absolute;inset:0;background:linear-gradient(to top,rgba(2,7,13,.86),transparent 46%)}
+.hero-top{position:absolute;z-index:2;left:11px;right:11px;top:11px;display:flex;justify-content:space-between}
+.iconbtn{width:36px;height:36px;border-radius:11px;border:1px solid rgba(255,255,255,.10);background:rgba(7,14,22,.55);color:#fff;font-size:16px;backdrop-filter:blur(2px);display:grid;place-items:center}
+.play-main{position:absolute;z-index:3;left:50%;top:46%;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:50%;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.5);color:#fff;font-size:22px;padding-left:4px;backdrop-filter:blur(2px);display:grid;place-items:center}
+.hero-copy{position:absolute;z-index:3;left:15px;right:15px;bottom:14px}
+.kicker{color:var(--gold2);font-weight:700;font-size:11px;letter-spacing:.04em;display:flex;align-items:center;gap:5px}
+.hero-copy h2{margin:5px 0 11px;font-family:Georgia,serif;font-size:19px;line-height:1.08;text-shadow:0 2px 10px rgba(0,0,0,.5)}
+.progress-row{display:grid;grid-template-columns:42px 1fr 42px;align-items:center;gap:9px;font:600 11px ui-monospace,monospace;color:#e7edf6}
+.trk{position:relative;height:4px;border-radius:99px;background:rgba(255,255,255,.24)}
+.trk span{position:absolute;inset:0 auto 0 0;width:52%;border-radius:99px;background:var(--gold)}
+.trk span:after{content:"";position:absolute;right:-5px;top:50%;transform:translateY(-50%);width:12px;height:12px;border-radius:50%;background:var(--gold2);box-shadow:0 0 0 3px rgba(229,170,52,.25)}
+
+/* Info — 4 colonnes */
+.info{display:grid;grid-template-columns:repeat(4,1fr);overflow:hidden;border:1px solid var(--line);border-radius:15px;background:linear-gradient(180deg,#111e2d,#0b1725)}
+.info>div{display:grid;place-items:center;gap:2px;padding:8px 4px;border-right:1px solid var(--line)}
+.info>div:last-child{border-right:0}
+.info .ico{color:var(--gold);display:grid;place-items:center}
+.info .ico svg{width:16px;height:16px}
+.info b{font-size:11.5px;white-space:nowrap}
+.info small{font-size:10px;color:var(--muted)}
+
+/* Sections */
+.section{min-width:0;display:grid;grid-template-rows:20px 1fr}
+.title{display:flex;align-items:center;justify-content:space-between;padding:0 3px}
+.title h3{margin:0;font-size:11.5px;letter-spacing:.12em;color:#c3ccd6}
+.title button{border:0;background:none;color:var(--gold2);font-size:11px}
+
+/* Timeline */
+.timeline{min-width:0;overflow:hidden;border:1px solid var(--line);border-radius:15px;padding:8px 10px 8px;background:#0b1726;display:flex;flex-direction:column;gap:6px}
+.ruler{display:flex;justify-content:space-between;font:600 10px ui-monospace,monospace;color:#aab4c1}
+.clips{display:flex;align-items:center;gap:0;overflow-x:auto;scrollbar-width:none}
+.clips::-webkit-scrollbar{display:none}
+.clip{position:relative;flex:0 0 auto}
+.clip img{width:58px;height:38px;object-fit:cover;border-radius:8px;display:block}
+.clip span{position:absolute;right:3px;bottom:3px;font:600 9px ui-monospace,monospace;padding:1px 4px;border-radius:4px;background:rgba(0,0,0,.6)}
+.sep{flex:0 0 auto;width:24px;display:grid;place-items:center}
+.sep i{width:20px;height:20px;border-radius:6px;background:#0a1220;border:1px solid var(--line);display:grid;place-items:center;font-size:10px;font-style:normal;color:#aeb9cc}
+.wave{height:22px;padding:0 8px;display:flex;align-items:center;gap:2px;overflow:hidden;border:1px solid rgba(141,86,223,.25);border-radius:9px;background:#160f2a}
+.wave i{display:block;width:2px;border-radius:2px;background:var(--purple)}
+.syncline{display:flex;align-items:center;gap:9px}
+.syncline label{font:600 11px system-ui;color:var(--muted)}
+.syncline input{flex:1;accent-color:var(--gold);height:14px}
+.syncline .v{font:600 11px ui-monospace,monospace;color:var(--gold2);width:44px;text-align:right}
+.syncline .rs{border:1px solid var(--line);background:transparent;color:var(--muted);font:600 10px system-ui;border-radius:6px;padding:4px 7px}
+
+/* Sources — compact horizontal */
+.sources{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;min-height:0}
+.source{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  padding:6px 8px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:linear-gradient(180deg,#111e2d,#0a1623);
+  cursor:pointer;
+  transition:background .15s,border-color .15s
+}
+.source:active{background:#0d1928}
+.source .ico{
+  width:26px;
+  height:26px;
+  border-radius:8px;
+  display:grid;
+  place-items:center;
+  background:#17305a;
+  flex-shrink:0;
+  color:#fff
+}
+.source .ico svg{width:14px;height:14px}
+.source .tx{flex:1;min-width:0;line-height:1.15}
+.source h4{margin:0;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.source p{margin:1px 0 0;color:rgba(245,247,251,.7);font-size:9.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.source .chev{color:#5a6a7d;font-size:14px;flex-shrink:0}
+
+/* Ambiance — compact */
+.ambience{
+  display:grid;
+  grid-template-columns:36px 1fr 16px;
+  align-items:center;
+  gap:10px;
+  padding:7px 10px;
+  border:1px solid var(--gold);
+  border-radius:14px;
+  background:linear-gradient(180deg,rgba(229,170,52,.10),#0b1623);
+  cursor:pointer
+}
+.ambicon{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:#17305a;font-size:17px;color:#fff}
+.ambicon svg{width:17px;height:17px}
+.ambtext b{font-size:13px}
+.ambtext b span{color:var(--gold2)}
+.ambtext small{display:block;margin-top:1px;color:var(--muted);font-size:10px}
+.chev{font-size:20px;color:#d7dde6}
+
+/* Actions — bouton lecture + IA integree a droite */
+.actions-wrap{display:flex;align-items:center;gap:0;position:relative}
+.watch{
+  flex:1;
+  height:48px;
+  border-radius:14px;
+  font-size:15px;
+  font-weight:800;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  border:0;
+  color:#171006;
+  background:linear-gradient(135deg,#f4bd45,#d99a22);
+  padding-right:52px
+}
+.watch svg{width:16px;height:16px}
+.ia-on-btn{
+  position:absolute;
+  right:4px;
+  top:50%;
+  transform:translateY(-50%);
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  border:0;
+  background:linear-gradient(135deg,#1a0f00,#2a1a05);
+  color:var(--gold2);
+  font-size:18px;
+  display:grid;
+  place-items:center;
+  box-shadow:0 2px 8px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08);
+  cursor:pointer;
+  transition:transform .12s,box-shadow .12s
+}
+.ia-on-btn:active{transform:translateY(-50%) scale(.92)}
+.ia-on-btn svg{width:20px;height:20px}
+
+/* Sheets — avec animation */
+.sheet-bg{display:none;position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);opacity:0;transition:opacity .25s ease}
+.sheet-bg.show{display:block;opacity:1}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-width:430px;margin:auto;padding:0 0 calc(18px + env(safe-area-inset-bottom));border-radius:24px 24px 0 0;background:#0b1725;border-top:1px solid var(--line);display:flex;flex-direction:column;max-height:84svh;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,.36,1)}
+.sheet-bg.show .sheet{transform:translateY(0)}
+.grip{width:38px;height:4px;border-radius:3px;background:rgba(255,255,255,.22);margin:10px auto 2px}
+.sh-top{display:flex;align-items:center;gap:10px;padding:8px 16px 11px;border-bottom:1px solid var(--line)}
+.sh-top b{flex:1;font-size:15px;font-weight:700}
+.sh-top .done{border:0;background:var(--gold);color:#171008;font-weight:700;font-size:13px;border-radius:10px;padding:8px 15px}
+.sh-top .cancel{border:0;background:transparent;color:var(--muted);font-size:13px;font-weight:600}
+.sh-body{overflow:auto;padding:14px 16px 8px}
+.sh-note{color:var(--muted);font-size:12px;line-height:1.5;margin:0 0 12px}
+.pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pg{position:relative;aspect-ratio:3/4;border-radius:10px;overflow:hidden;background:#0e1a29}
+.pg img{width:100%;height:100%;object-fit:cover;display:block;transition:opacity .15s,filter .15s}
+.pg.off img{opacity:.26;filter:grayscale(1)}
+.pg .mk{position:absolute;top:6px;right:6px;width:21px;height:21px;border-radius:50%;background:var(--gold);color:#171008;font-size:12px;display:grid;place-items:center;font-weight:700}
+.pg.off .mk{background:rgba(255,255,255,.25);color:#fff}
+.pg .auto{position:absolute;left:6px;bottom:6px;font:700 9px system-ui;background:rgba(3,7,14,.7);color:var(--gold2);padding:2px 5px;border-radius:5px}
+.addtile{border:1.5px dashed var(--gold);border-radius:10px;display:grid;place-items:center;gap:2px;color:var(--gold2);font:600 11px system-ui;aspect-ratio:3/4;background:rgba(229,170,52,.06)}
+.addtile svg{width:22px;height:22px}
+.trk2{display:flex;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid var(--line)}
+.trk2 .tic{width:40px;height:40px;border-radius:11px;background:#17305a;display:grid;place-items:center;font-size:17px;flex:0 0 40px;color:#fff}
+.trk2 .tic svg{width:18px;height:18px}
+.trk2 .ttx{flex:1;line-height:1.2;min-width:0}
+.trk2 .ttx b{font-size:13.5px;font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trk2 .ttx span{font-size:10.5px;color:var(--muted)}
+.trk2 .act{flex:0 0 auto;border:1px solid var(--line);background:#101d2d;color:var(--text);border-radius:10px;padding:8px 12px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px}
+.trk2 .act.dl{color:var(--gold2);border-color:rgba(229,170,52,.4)}
+.trk2 .act.use{background:var(--gold);color:#171008;border-color:var(--gold)}
+.trk2.on{background:rgba(229,170,52,.06)}
+.trk2.on .ttx b{color:var(--gold2)}
+.trk2 .chk{flex:0 0 auto;width:30px;height:30px;border-radius:50%;background:var(--gold);color:#171008;display:grid;place-items:center;font-weight:700}
+.tagdef{font:700 9px system-ui;color:var(--gold2);border:1px solid rgba(229,170,52,.4);border-radius:5px;padding:1px 5px;margin-left:6px}
+.spin{width:15px;height:15px;border:2px solid var(--gold);border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite;display:inline-block}
+@keyframes sp{to{transform:rotate(360deg)}}
+.choice{display:flex;gap:12px;align-items:center;padding:13px;margin:8px 0;border:1px solid var(--line);border-radius:14px;background:#101d2d;cursor:pointer;transition:border-color .15s,background .15s}
+.choice .cem{font-size:20px;color:#fff;display:grid;place-items:center}
+.choice .cem svg{width:20px;height:20px}
+.choice .cbd b{font-size:15px;display:block}
+.choice .cbd small{color:var(--muted);font-size:11px}
+.choice.active{border-color:var(--gold);background:linear-gradient(180deg,rgba(229,170,52,.12),#101d2d)}
+.choice.active .cbd b{color:var(--gold2)}
+.efmts{display:flex;flex-direction:column;gap:10px}
+.efmt{display:flex;align-items:center;gap:13px;border:1px solid var(--line);background:#101d2d;border-radius:14px;padding:13px;cursor:pointer;transition:border-color .15s,background .15s}
+.efmt .ef-tx{flex:1}.efmt b{font-size:15px;font-weight:700}.efmt span{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.ef-sh{flex:0 0 auto;background:#17305a;border:1px solid rgba(255,255,255,.12);border-radius:4px}
+.ef-v{width:26px;height:44px}.ef-c{width:38px;height:38px}.ef-h{width:48px;height:27px}
+.efmt.on{border-color:var(--gold);background:linear-gradient(180deg,rgba(229,170,52,.13),#101d2d)}
+.efmt.on b{color:var(--gold2)}.efmt.on .ef-sh{background:var(--gold)}
+.doexp{margin-top:16px;width:100%;border:0;border-radius:14px;padding:15px;font-size:15px;font-weight:800;color:#171006;background:linear-gradient(135deg,#f4bd45,#d99a22)}
+
+/* Toast */
+.toast{position:fixed;z-index:30;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;transition:all .35s cubic-bezier(.32,.72,.36,1);background:#0b1725;border:1px solid var(--line);border-radius:12px;padding:10px 18px;font-size:12.5px;font-weight:600;color:var(--text);box-shadow:0 8px 24px rgba(0,0,0,.4);white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+/* Range slider stylise */
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:99px;background:rgba(255,255,255,.18);outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:var(--gold2);box-shadow:0 0 0 3px rgba(229,170,52,.25);border:none;cursor:pointer;transition:transform .1s}
+input[type=range]::-webkit-slider-thumb:active{transform:scale(1.2)}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--gold2);box-shadow:0 0 0 3px rgba(229,170,52,.25);border:none;cursor:pointer}
+
+@media (max-height:760px){
+  .app{gap:6px}
+  .s-seq{flex-basis:82px}.s-src{flex-basis:60px}.s-amb{flex-basis:50px}
+  .info{flex-basis:54px}.actions-wrap{flex-basis:46px}.hero{min-height:100px}
+  .hero-copy h2{font-size:17px}.brand h1{font-size:20px}
+  .watch{height:44px;font-size:14px}
+  .ia-on-btn{width:36px;height:36px}
+  .ia-on-btn svg{width:18px;height:18px}
+}
+
+/* ==== GREFFE : UI moteur hors-écran ==== */
+.wrap{position:absolute!important;left:-99999px!important;top:0!important;width:430px!important;opacity:0!important}
+.hero>canvas{position:absolute!important;top:50%;left:50%;transform:translate(-50%,-50%);height:100%;width:auto;max-width:100%;z-index:1;border-radius:0}
+
+</style>
 </head>
 <body>
+<!-- ====== INTERFACE KIMI (greffée) ====== -->
+
+<main class="app">
+  <header class="header">
+    <div class="header-left">
+      <button class="round"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      <button class="round spark"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l1.5 5L18 8.5l-4.5 1.5L12 15l-1.5-5L6 8.5l4.5-1.5z"/></svg></button>
+    </div>
+    <div class="brand"><h1>Studio Magot<i>✦</i></h1><p>Montage vidéo</p></div>
+    <button class="export" id="expBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3m0 0L7 8m5-5l5 5M5 15v4h14v-4"/></svg> Exporter</button>
+  </header>
+
+  <section class="hero">
+    <img src="https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?w=900&q=70" alt="">
+    <div class="veil"></div>
+    <div class="hero-top">
+      <button class="iconbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V4h4M4 16v4h4M20 8V4h-4M20 16v4h-4"/></svg></button>
+      <button class="iconbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>
+    </div>
+    <button class="play-main" id="heroPlay"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5l14 7-14 7z"/></svg></button>
+    <div class="hero-copy">
+      <div class="kicker"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2C8 6 8 11 12 15c4-4 4-9 0-13z"/><circle cx="12" cy="10" r="2.5"/></svg> MONT SAINT-MICHEL · JOUR 2</div>
+      <h2>Le chemin s'ouvre sur la baie.</h2>
+      <div class="progress-row"><span>00:00</span><div class="trk"><span></span></div><span>01:12</span></div>
+    </div>
+  </section>
+
+  <section class="info">
+    <div>
+      <span class="ico" id="infoIco"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20l-3-3m3 3l-3 3M2 12l4-2 3-6 3 8"/></svg></span>
+      <b id="infoLabel">Voyage</b><small id="infoDesc">Normandie</small>
+    </div>
+    <div>
+      <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg></span>
+      <b>112 BPM</b><small>Musique</small>
+    </div>
+    <div>
+      <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
+      <b>18 plans</b><small>Séquence</small>
+    </div>
+    <div>
+      <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span>
+      <b>1 min 12</b><small>Durée</small>
+    </div>
+  </section>
+
+  <section class="section s-seq">
+    <div class="title"><h3>SÉQUENCE — 18 PLANS</h3><button>Afficher tout</button></div>
+    <div class="timeline">
+      <div class="wave" id="wave"></div>
+      <div class="syncline"><label>Sync</label><input type="range" min="-300" max="300" value="0" id="syncR"><span class="v" id="syncV">0 ms</span><button class="rs" id="syncRs">Reset</button></div>
+    </div>
+  </section>
+
+  <section class="section s-src">
+    <div class="title"><h3>SOURCES</h3></div>
+    <div class="sources">
+      <article class="source" data-sheet="music">
+        <div class="ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg></div>
+        <div class="tx"><h4>Musique</h4><p id="srcMus">Ye Nomtema</p></div><span class="chev">›</span>
+      </article>
+      <article class="source" data-sheet="photos">
+        <div class="ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>
+        <div class="tx"><h4>Photos</h4><p>16 · 2 écartées</p></div><span class="chev">›</span>
+      </article>
+      <article class="source" data-sheet="video">
+        <div class="ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l2-6h12l2 6H4zm0 0v8h16v-8"/><path d="M8 4l-2 6M16 4l2 6"/></svg></div>
+        <div class="tx"><h4>Vidéo</h4><p>2 clips</p></div><span class="chev">›</span>
+      </article>
+    </div>
+  </section>
+
+  <section class="section s-amb">
+    <div class="title"><h3>AMBIANCE</h3></div>
+    <div class="ambience" id="openAmbience">
+      <div class="ambicon" id="ambIcon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20l-3-3m3 3l-3 3M2 12l4-2 3-6 3 8"/></svg></div>
+      <div class="ambtext"><b>Ambiance : <span id="ambName">Voyage</span></b><small id="ambDesc">Vivant, lumineux, aventureux</small></div>
+      <div class="chev">›</div>
+    </div>
+  </section>
+
+  <div class="actions-wrap">
+    <button class="watch" id="watchBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5l14 7-14 7z"/></svg> Lire le film</button>
+    <button class="ia-on-btn" id="iaBtn" title="IA"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></button>
+  </div>
+</main>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Photos -->
+<div class="sheet-bg" data-bg="photos"><div class="sheet" style="height:80svh">
+  <div class="grip"></div>
+  <div class="sh-top"><b>Photos du voyage</b><button class="done" data-close data-toast="2 photos écartées — 14 conservées">Valider</button></div>
+  <div class="sh-body"><p class="sh-note">Tape une photo pour l'<b>écarter</b> (grisée) ou la <b>réinclure</b>. L'IA a déjà grisé les captures détectées — tu gardes le dernier mot.</p><div class="pgrid" id="pgrid"></div></div>
+</div></div>
+<!-- Video -->
+<div class="sheet-bg" data-bg="video"><div class="sheet" style="height:80svh">
+  <div class="grip"></div>
+  <div class="sh-top"><b>Clips vidéo</b><button class="done" data-close data-toast="Clips vidéo mis à jour">Valider</button></div>
+  <div class="sh-body"><p class="sh-note">Le réalisateur intercale des bouts de tes clips sur les temps forts. Tape un clip pour l'écarter.</p><div class="pgrid" id="vgrid"></div></div>
+</div></div>
+<!-- Musique -->
+<div class="sheet-bg" data-bg="music"><div class="sheet" style="height:80svh">
+  <div class="grip"></div>
+  <div class="sh-top"><b>Bibliothèque musicale</b><button class="cancel" data-close>Fermer</button></div>
+  <div class="sh-body"><p class="sh-note">Bibliothèque Magot (déposée par l'administrateur). <b>Télécharge</b> un morceau, puis <b>Utilise-le</b> — le réalisateur cale les coupes sur son tempo.</p><div id="mlist"></div></div>
+</div></div>
+<!-- Ambiance -->
+<div class="sheet-bg" data-bg="amb"><div class="sheet">
+  <div class="grip"></div>
+  <div class="sh-top"><b>Choisir une ambiance</b><button class="done" data-close data-toast="Ambiance mise à jour">OK</button></div>
+  <div class="sh-body">
+    <div class="choice" data-name="Cinéma" data-desc="Posé, élégant, cinématographique" data-icon="cinema" data-short="Posé">
+      <span class="cem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l2-6h12l2 6H4zm0 0v8h16v-8"/><path d="M8 4l-2 6M16 4l2 6"/></svg></span>
+      <div class="cbd"><b>Cinéma</b><small>Posé, élégant</small></div>
+    </div>
+    <div class="choice" data-name="Doux" data-desc="Calme, tendre, émotionnel" data-icon="heart" data-short="Calme">
+      <span class="cem"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 21l-1.5-1.5C6 15 3 12 3 8.5 3 6 5 4 7.5 4c1.5 0 3 1 4.5 2.5C13.5 5 15 4 16.5 4 19 4 21 6 21 8.5c0 3.5-3 6.5-7.5 11L12 21z"/></svg></span>
+      <div class="cbd"><b>Doux</b><small>Calme, tendre</small></div>
+    </div>
+    <div class="choice active" data-name="Voyage" data-desc="Vivant, lumineux, aventureux" data-icon="plane" data-short="Aventureux">
+      <span class="cem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20l-3-3m3 3l-3 3M2 12l4-2 3-6 3 8"/></svg></span>
+      <div class="cbd"><b>Voyage</b><small>Vivant, lumineux, aventureux</small></div>
+    </div>
+    <div class="choice" data-name="Dynamique" data-desc="Rythmé, puissant, énergique" data-icon="bolt" data-short="Énergique">
+      <span class="cem"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
+      <div class="cbd"><b>Dynamique</b><small>Rythmé, puissant</small></div>
+    </div>
+  </div>
+</div></div>
+<!-- Export -->
+<div class="sheet-bg" data-bg="export"><div class="sheet">
+  <div class="grip"></div>
+  <div class="sh-top"><b>Exporter la vidéo</b><button class="cancel" data-close>Annuler</button></div>
+  <div class="sh-body">
+    <p class="sh-note">Choisis le format, puis lance l'export. Par défaut : <b>9:16</b> (vertical).</p>
+    <div class="efmts">
+      <button class="efmt on" data-ef="v"><div class="ef-sh ef-v"></div><div class="ef-tx"><b>9:16</b><span>Vertical · Stories, Reels, TikTok</span></div></button>
+      <button class="efmt" data-ef="c"><div class="ef-sh ef-c"></div><div class="ef-tx"><b>1:1</b><span>Carré · fil Instagram</span></div></button>
+      <button class="efmt" data-ef="h"><div class="ef-sh ef-h"></div><div class="ef-tx"><b>16:9</b><span>Paysage · YouTube</span></div></button>
+    </div>
+    <button class="doexp" id="doExport"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="display:inline-block;vertical-align:middle;margin-right:4px"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> Exporter en 9:16</button>
+  </div>
+</div></div>
+
+
+<!-- ====== /INTERFACE KIMI ====== -->
+
 <div class="wrap">
   <h1>Studio Magot — test Essentia</h1>
   <p class="sub">Détection des temps par Essentia (repli moteur maison si indisponible), coupes verrouillées sur un nombre entier de temps, effets GPU. Lecture en direct.</p>
@@ -6926,6 +7325,205 @@ async function exportFast(){
 var _eb=document.getElementById("exportBtn"); if(_eb) _eb.onclick=function(){ exportFast(); };
 initGL(); paintStrip(0); updateBadge();
 essentiaReady.then(function(ok){ if(!ok && !A){ /* silencieux : le repli se fait à l'analyse */ } });
+</script>
+<script>
+(function(){
+
+"use strict";
+function el(t,c,h){ var e=document.createElement(t); if(c)e.className=c; if(h!=null)e.innerHTML=h; return e; }
+
+/* Icon SVG library */
+var icoLib={
+  plane:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20l-3-3m3 3l-3 3M2 12l4-2 3-6 3 8"/></svg>',
+  heart:'<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 21l-1.5-1.5C6 15 3 12 3 8.5 3 6 5 4 7.5 4c1.5 0 3 1 4.5 2.5C13.5 5 15 4 16.5 4 19 4 21 6 21 8.5c0 3.5-3 6.5-7.5 11L12 21z"/></svg>',
+  cinema:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l2-6h12l2 6H4zm0 0v8h16v-8"/><path d="M8 4l-2 6M16 4l2 6"/></svg>',
+  bolt:'<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>',
+  music:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg>',
+  check:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
+  plus:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>',
+  download:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3m0 12l-4-4m4 4l4-4M4 17v4h16v-4"/></svg>'
+};
+
+/* Toast system */
+var toastEl=document.getElementById("toast"), toastTimer=null;
+function showToast(msg){
+  toastEl.innerHTML=msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){ toastEl.classList.remove("show"); },2200);
+}
+
+/* timeline : vignettes + transitions */
+/* wave */
+var wave=document.getElementById("wave"); var prev=10;
+for(var i=0;i<110;i++){ var t=i/110; var env=Math.sin(t*Math.PI*0.9)*0.6+0.4; var tg=(4+Math.abs(Math.sin(i*0.31)+Math.cos(i*0.13))*13)*env+(Math.random()*5-2.5); prev=prev*0.5+tg*0.5; var b=el("i"); b.style.height=Math.max(3,Math.min(21,prev))+"px"; wave.appendChild(b); }
+
+/* sync */
+var sr=document.getElementById("syncR"), sv=document.getElementById("syncV");
+sr.oninput=function(){ sv.textContent=(sr.value>0?"+":"")+sr.value+" ms"; };
+document.getElementById("syncRs").onclick=function(){ sr.value=0; sv.textContent="0 ms"; };
+
+/* lecture */
+var playing=false, hp=document.getElementById("heroPlay"), wb=document.getElementById("watchBtn");
+function togglePlay(){ playing=!playing; hp.innerHTML=playing?'<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>':'<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5l14 7-14 7z"/></svg>'; wb.innerHTML=playing?'<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg> Pause':'<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5l14 7-14 7z"/></svg> Lire le film'; }
+hp.onclick=togglePlay; wb.onclick=togglePlay;
+
+/* feuilles */
+function openSheet(n){ document.querySelector('.sheet-bg[data-bg="'+n+'"]').classList.add("show"); }
+function closeSheets(){ document.querySelectorAll(".sheet-bg").forEach(function(e){e.classList.remove("show");}); }
+document.querySelectorAll(".source[data-sheet]").forEach(function(b){ b.onclick=function(){ openSheet(b.getAttribute("data-sheet")); }; });
+document.getElementById("openAmbience").onclick=function(){ openSheet("amb"); };
+document.getElementById("expBtn").onclick=function(){ openSheet("export"); };
+document.querySelectorAll("[data-close]").forEach(function(b){ 
+  b.onclick=function(){
+    var msg=b.getAttribute("data-toast");
+    closeSheets();
+    if(msg) setTimeout(function(){ showToast(msg); }, 280);
+  }; 
+});
+document.querySelectorAll(".sheet-bg").forEach(function(bg){ bg.onclick=function(e){ if(e.target===bg) closeSheets(); }; });
+
+/* export format */
+var efLbl={v:"9:16",c:"1:1",h:"16:9"};
+document.querySelectorAll(".efmt").forEach(function(b){ b.onclick=function(){ document.querySelectorAll(".efmt").forEach(function(x){x.classList.remove("on");}); b.classList.add("on"); document.getElementById("doExport").innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="display:inline-block;vertical-align:middle;margin-right:4px"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> Exporter en '+efLbl[b.getAttribute("data-ef")]; }; });
+
+/* photos */
+var demo=["1523906834658-6e24ef2386f9","1500534623283-312aade485b7","1502602898657-3e91760cbb34","1499856871958-5b9627545d1a","1467269204594-9661b134dd2b","1504609773096-104ff2c73ba4","1520250497591-112f2f40a3f4","1533105079780-92b9be482077","1526772662000-3f88f10405ff","1491557345352-5929e343eb89","1520939817895-060bdaf4fe1b","1534430480872-3498386e7856"];
+var pg=document.getElementById("pgrid");
+demo.forEach(function(id,i){ var off=(i===3||i===8); var d=el("div","pg"+(off?" off":"")); d.innerHTML='<img src="https://images.unsplash.com/photo-'+id+'?w=240&q=55"><div class="mk">'+(off?"+":"✓")+'</div>'+(off?'<div class="auto">capture</div>':''); d.onclick=function(){ d.classList.toggle("off"); d.querySelector(".mk").textContent=d.classList.contains("off")?"+":"✓"; }; pg.appendChild(d); });
+pg.appendChild(el("div","addtile",icoLib.plus+'<span>Ajouter</span>'));
+var vg=document.getElementById("vgrid");
+["1516035069371-29a1b244cc32","1502920917128-1aa500764cbd"].forEach(function(id){ var d=el("div","pg"); d.innerHTML='<img src="https://images.unsplash.com/photo-'+id+'?w=240&q=55"><div class="mk">✓</div><div class="auto">▶ clip</div>'; d.onclick=function(){ d.classList.toggle("off"); d.querySelector(".mk").textContent=d.classList.contains("off")?"+":"✓"; }; vg.appendChild(d); });
+vg.appendChild(el("div","addtile",icoLib.plus+'<span>Ajouter</span>'));
+
+/* musique : telecharger -> utiliser */
+var tracks=[["Ye Nomtema — André Marie Tala","2:45",true,true,true],["Aventure","3:10",false,false,false],["Souvenir","2:38",false,false,false],["Peace & Perfection","3:52",false,false,false],["Le rite du désert","4:05",false,false,false],["Echoes of grace","3:20",false,false,false]];
+var ml=document.getElementById("mlist");
+function renderMusic(){ ml.innerHTML="";
+  tracks.forEach(function(t,idx){ var name=t[0],dur=t[1],dl=t[2],sel=t[3],def=t[4];
+    var r=el("div","trk2"+(sel?" on":""));
+    var right = sel ? '<div class="chk">'+icoLib.check+'</div>' : (dl ? '<button class="act use">Utiliser</button>' : '<button class="act dl">'+icoLib.download+' Télécharger</button>');
+    r.innerHTML='<div class="tic">'+icoLib.music+'</div><div class="ttx"><b>'+name+(def?'<span class="tagdef">par défaut</span>':'')+'</b><span>'+dur+' · bibliothèque Magot</span></div>'+right;
+    var actBtn=r.querySelector(".act");
+    if(actBtn){ actBtn.onclick=function(e){ e.stopPropagation();
+      if(!dl){ actBtn.innerHTML='<span class="spin"></span>'; setTimeout(function(){ tracks[idx][2]=true; renderMusic(); showToast("Téléchargement terminé"); },900); }
+      else { tracks.forEach(function(x){x[3]=false;}); tracks[idx][3]=true; renderMusic(); document.getElementById("srcMus").textContent=name.split(" — ")[0]; showToast("Musique changée : "+name.split(" — ")[0]); }
+    }; }
+    ml.appendChild(r);
+  });
+}
+renderMusic();
+
+/* ambiance — met a jour aussi la tuile Info */
+document.querySelectorAll(".choice").forEach(function(ch){ ch.onclick=function(){
+  document.querySelectorAll(".choice").forEach(function(x){x.classList.remove("active");}); ch.classList.add("active");
+  var iconName=ch.dataset.icon;
+  document.getElementById("ambName").textContent=ch.dataset.name;
+  document.getElementById("ambDesc").textContent=ch.dataset.desc;
+  document.getElementById("ambIcon").innerHTML=icoLib[iconName];
+  document.getElementById("infoIco").innerHTML=icoLib[iconName];
+  document.getElementById("infoLabel").textContent=ch.dataset.name;
+  document.getElementById("infoDesc").textContent=ch.dataset.short;
+  setTimeout(closeSheets,140);
+}; });
+
+/* IA bouton */
+document.getElementById("iaBtn").onclick=function(e){
+  e.stopPropagation();
+  showToast("⚡ IA en cours d'analyse…");
+};
+
+try{window.showToast=showToast;}catch(e){}
+try{window.__kToggle=togglePlay;}catch(e){}
+})();
+</script>
+<script>
+/* ====== PONT design Kimi <-> moteur ====== */
+(function(){
+  function $(id){return document.getElementById(id);}
+  function q(s){return document.querySelector(s);}
+  var PLAY_SVG='<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5l14 7-14 7z"/></svg>';
+  var PAUSE_SVG='<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>';
+  var WPLAY='<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5l14 7-14 7z"/></svg> Lire le film';
+  var WPAUSE='<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg> Pause';
+
+  /* 1) canvas moteur dans l'aperçu */
+  var hero=q('.hero');
+  if(hero){
+    var im=hero.querySelector('img'); if(im) im.style.display='none';
+    var vl=hero.querySelector('.veil'); if(vl) vl.style.display='none';
+    var kk=hero.querySelector('.kicker'); if(kk) kk.style.display='none';
+    var hh=hero.querySelector('h2'); if(hh) hh.style.display='none';
+    hero.style.background='#000';
+    var b=$('base'), g=$('gl');
+    if(b) hero.appendChild(b);
+    if(g) hero.appendChild(g);
+    ['.hero-top','.play-main','.hero-copy'].forEach(function(s){ var e=hero.querySelector(s); if(e) e.style.zIndex=4; });
+  }
+
+  /* 2) lecture */
+  function syncIcons(){ setTimeout(function(){ var pl=!!window.playing; var hp=$('heroPlay'),wb=$('watchBtn'); if(hp) hp.innerHTML=pl?PAUSE_SVG:PLAY_SVG; if(wb) wb.innerHTML=pl?WPAUSE:WPLAY; },40); }
+  function bridgePlay(){ var ep=$('play'); if(ep) ep.click(); syncIcons(); }
+  var hp=$('heroPlay'), wb=$('watchBtn');
+  if(hp) hp.onclick=bridgePlay;
+  if(wb) wb.onclick=bridgePlay;
+
+  /* 3) sync */
+  var kS=$('syncR'), kSV=$('syncV'), eS=$('sync'), eR=$('syncReset');
+  if(kS&&eS){ kS.oninput=function(){ eS.value=kS.value; eS.dispatchEvent(new Event('input')); if(kSV) kSV.textContent=(kS.value>0?'+':'')+kS.value+' ms'; }; }
+  var kRs=$('syncRs'); if(kRs) kRs.onclick=function(){ if(eR) eR.click(); if(kS) kS.value=0; if(kSV) kSV.textContent='0 ms'; };
+
+  /* 4) Photos : vrai #thumbs + Ajouter (tap-exclure conservé par le moteur) */
+  var ps=q('.sheet-bg[data-bg="photos"] .sh-body');
+  if(ps){
+    ps.innerHTML='<p class="sh-note">Ajoute tes photos, puis <b>tape une vignette</b> pour l\'écarter (grisée) ou la réinclure. L\'IA grise déjà les captures détectées.</p>';
+    var ab=document.createElement('button'); ab.className='doexp'; ab.style.margin='0 0 14px'; ab.innerHTML='＋ Ajouter des photos'; ab.onclick=function(){ var f=$('fPhotos'); if(f) f.click(); };
+    ps.appendChild(ab);
+    var th=$('thumbs'); if(th){ th.style.cssText='display:flex;flex-wrap:wrap;gap:6px'; ps.appendChild(th); }
+  }
+
+  /* 5) Vidéo : Ajouter */
+  var vs=q('.sheet-bg[data-bg="video"] .sh-body');
+  if(vs){
+    vs.innerHTML='<p class="sh-note">Ajoute des clips — le réalisateur les intercale sur les temps forts.</p>';
+    var vb=document.createElement('button'); vb.className='doexp'; vb.innerHTML='＋ Ajouter des clips'; vb.onclick=function(){ var f=$('fVideo'); if(f) f.click(); };
+    vs.appendChild(vb);
+  }
+
+  /* 6) Musique : charger un fichier (test) en haut du panneau */
+  var ms=q('.sheet-bg[data-bg="music"] .sh-body');
+  if(ms){
+    var mb=document.createElement('button'); mb.className='doexp'; mb.style.margin='0 0 14px'; mb.innerHTML='＋ Charger une musique (test)'; mb.onclick=function(){ var f=$('fMusic'); if(f) f.click(); };
+    ms.insertBefore(mb, ms.firstChild);
+  }
+
+  /* 7) Ambiance -> mode moteur */
+  var moodMap={'cinéma':'cinema','cinema':'cinema','doux':'doux','voyage':'voyage','dynamique':'dynamique'};
+  document.querySelectorAll('.choice').forEach(function(ch){
+    ch.addEventListener('click',function(){ var nm=(ch.getAttribute('data-name')||'').toLowerCase(); var md=moodMap[nm]||'cinema'; var mbn=document.querySelector('.mood[data-mood="'+md+'"]'); if(mbn) mbn.click(); });
+  });
+
+  /* 8) Export : format + lancement */
+  var dims={v:[540,960,'9:16'],c:[720,720,'1:1'],h:[960,540,'16:9']};
+  document.querySelectorAll('.efmt').forEach(function(b){ b.addEventListener('click',function(){ var d=dims[b.getAttribute('data-ef')]; if(d&&typeof window.setFormat==='function') window.setFormat(d[0],d[1],d[2]); }); });
+  var de=$('doExport'); if(de) de.onclick=function(){ document.querySelectorAll('.sheet-bg').forEach(function(e){e.classList.remove('show');}); if(typeof window.exportFast==='function') window.exportFast(); };
+
+  /* 9) IA : recalcul du réalisateur */
+  var ia=$('iaBtn'); if(ia) ia.onclick=function(e){ e.stopPropagation(); var rb=$('restart'); if(rb) rb.click(); if(window.showToast) window.showToast('⚡ Montage recalculé'); };
+
+  /* 10) fiche BPM / plans / durée depuis l'état moteur */
+  setInterval(function(){ try{
+    var A=window.A;
+    var infoDivs=document.querySelectorAll('.info>div');
+    if(A){
+      var bpm=A.bpmFelt||A.bpm||0;
+      if(infoDivs[1]){ var bb=infoDivs[1].querySelector('b'); if(bb&&bpm) bb.textContent=Math.round(bpm)+' BPM'; }
+      if(infoDivs[2]){ var pb=infoDivs[2].querySelector('b'); var n=(window.SEGS&&window.SEGS.length)||0; if(pb) pb.textContent=n+' plans'; }
+      if(infoDivs[3]){ var db=infoDivs[3].querySelector('b'); if(db&&A.dur){ var m=Math.floor(A.dur/60),s=Math.round(A.dur%60); db.textContent=(m>0?(m+' min '+(s<10?'0':'')+s):(s+' s')); } }
+    }
+    syncIcons();
+  }catch(e){} }, 700);
+})();
 </script>
 </body>
 </html>
