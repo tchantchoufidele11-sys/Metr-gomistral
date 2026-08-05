@@ -57,7 +57,7 @@ body{display:flex;justify-content:center}
 .hero{flex:1 1 0;min-height:150px}
 .info{flex:0 0 58px}
 .section{flex:0 0 auto}
-.s-seq{flex:0 0 88px}
+.s-seq{flex:0 0 106px}
 .s-src{flex:0 0 64px}
 .s-amb{flex:0 0 54px}
 .actions-wrap{flex:0 0 52px;position:relative}
@@ -75,7 +75,6 @@ body{display:flex;justify-content:center}
 
 /* Hero */
 .hero{position:relative;overflow:hidden;border-radius:16px;border:none;background:transparent}
-.hero .hero-copy{display:none}
 .hero.cinema{position:fixed!important;inset:0!important;z-index:60!important;border-radius:0!important;background:#000!important}
 .hero>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .hero .veil{position:absolute;inset:0;background:linear-gradient(to top,rgba(2,7,13,.86),transparent 46%)}
@@ -115,7 +114,8 @@ body{display:flex;justify-content:center}
 .clip span{position:absolute;right:3px;bottom:3px;font:600 9px ui-monospace,monospace;padding:1px 4px;border-radius:4px;background:rgba(0,0,0,.6)}
 .sep{flex:0 0 auto;width:24px;display:grid;place-items:center}
 .sep i{width:20px;height:20px;border-radius:6px;background:#0a1220;border:1px solid var(--line);display:grid;place-items:center;font-size:10px;font-style:normal;color:#aeb9cc}
-.wave{height:22px;padding:0 8px;display:flex;align-items:center;gap:2px;overflow:hidden;border:1px solid rgba(141,86,223,.25);border-radius:9px;background:#160f2a}
+.wave{height:44px;padding:0;overflow:hidden;border:1px solid rgba(141,86,223,.28);border-radius:9px;background:#0e1630}
+#strip{width:100%!important;height:100%!important;display:block!important}
 .wave i{display:block;width:2px;border-radius:2px;background:var(--purple)}
 .syncline{display:flex;align-items:center;gap:9px}
 .syncline label{font:600 11px system-ui;color:var(--muted)}
@@ -276,7 +276,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 
 @media (max-height:760px){
   .app{gap:6px}
-  .s-seq{flex-basis:82px}.s-src{flex-basis:60px}.s-amb{flex-basis:50px}
+  .s-seq{flex-basis:98px}.s-src{flex-basis:60px}.s-amb{flex-basis:50px}
   .info{flex-basis:54px}.actions-wrap{flex-basis:46px}.hero{min-height:100px}
   .hero-copy h2{font-size:17px}.brand h1{font-size:20px}
   .watch{height:44px;font-size:14px}
@@ -7445,6 +7445,7 @@ try{window.__kToggle=togglePlay;}catch(e){}
 (function(){
   function $(id){return document.getElementById(id);}
   function q(s){return document.querySelector(s);}
+  function fmt(s){ s=Math.max(0,s||0); var m=Math.floor(s/60),x=Math.round(s%60); return m+':'+(x<10?'0':'')+x; }
   var PLAY_SVG='<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5l14 7-14 7z"/></svg>';
   var PAUSE_SVG='<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>';
   var WPLAY='<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5l14 7-14 7z"/></svg> Lire le film';
@@ -7457,12 +7458,15 @@ try{window.__kToggle=togglePlay;}catch(e){}
     var vl=hero.querySelector('.veil'); if(vl) vl.style.display='none';
     var kk=hero.querySelector('.kicker'); if(kk) kk.style.display='none';
     var hh=hero.querySelector('h2'); if(hh) hh.style.display='none';
-    hero.style.background='transparent'; var _hc=hero.querySelector('.hero-copy'); if(_hc) _hc.style.display='none';
+    hero.style.background='transparent';
     var b=$('base'), g=$('gl');
     if(b) hero.appendChild(b);
     if(g) hero.appendChild(g);
     ['.hero-top','.play-main','.hero-copy'].forEach(function(s){ var e=hero.querySelector(s); if(e) e.style.zIndex=4; });
   }
+
+  /* 1b) vraie forme d'onde du moteur (beats + repère) dans la Séquence */
+  (function(){ var strip=$('strip'), wv=$('wave'); if(strip&&wv){ wv.innerHTML=''; strip.style.cssText='width:100%;height:100%;display:block'; wv.appendChild(strip); if(typeof window.paintStrip==='function'){ try{ window.paintStrip(0); }catch(e){} } } })();
 
   /* 2) lecture */
   function syncIcons(){ setTimeout(function(){ var pl=!!window.playing; var hp=$('heroPlay'),wb=$('watchBtn'); if(hp) hp.innerHTML=pl?PAUSE_SVG:PLAY_SVG; if(wb) wb.innerHTML=pl?WPAUSE:WPLAY; },40); }
@@ -7535,13 +7539,20 @@ try{window.__kToggle=togglePlay;}catch(e){}
     var A=window.A;
     var infoDivs=document.querySelectorAll('.info>div');
     if(A){
+      var cur=(window.audioEl?window.audioEl.currentTime:0)||0;
+      var frac=A.dur?Math.min(1,cur/A.dur):0;
+      var fill=q('.hero .trk span'); if(fill) fill.style.width=(frac*100).toFixed(1)+'%';
+      var ts=document.querySelectorAll('.hero .progress-row span'); if(ts[0]) ts[0].textContent=fmt(cur); if(ts[1]&&A.dur) ts[1].textContent=fmt(A.dur);
+      var h3=q('.s-seq .title h3'); if(h3){ var np=(window.SEGS&&window.SEGS.length)||0; if(np) h3.textContent='S\u00c9QUENCE \u2014 '+np+' PLANS'; }
       var bpm=A.bpmFelt||A.bpm||0;
       if(infoDivs[1]){ var bb=infoDivs[1].querySelector('b'); if(bb&&bpm) bb.textContent=Math.round(bpm)+' BPM'; }
       if(infoDivs[2]){ var pb=infoDivs[2].querySelector('b'); var n=(window.SEGS&&window.SEGS.length)||0; if(pb) pb.textContent=n+' plans'; }
       if(infoDivs[3]){ var db=infoDivs[3].querySelector('b'); if(db&&A.dur){ var m=Math.floor(A.dur/60),s=Math.round(A.dur%60); db.textContent=(m>0?(m+' min '+(s<10?'0':'')+s):(s+' s')); } }
     }
     syncIcons();
-  }catch(e){} }, 700);
+  }catch(e){} }, 250);
+  /* progression fluide */
+  setInterval(function(){ try{ var A=window.A; if(A&&A.dur){ var cur=(window.audioEl?window.audioEl.currentTime:0)||0; var fr=Math.min(1,cur/A.dur); var f=q('.hero .trk span'); if(f) f.style.width=(fr*100).toFixed(1)+'%'; var ts=document.querySelectorAll('.hero .progress-row span'); if(ts[0]) ts[0].textContent=fmt(cur); } }catch(e){} }, 200);
 })();
 </script>
 </body>
