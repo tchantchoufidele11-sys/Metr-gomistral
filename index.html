@@ -49,18 +49,18 @@ button{font:inherit;color:inherit}
 body{display:flex;justify-content:center}
 .app{
   width:min(100vw,430px);height:100svh;overflow:hidden;display:flex;flex-direction:column;
-  gap:7px;
-  padding:max(8px,env(safe-area-inset-top)) 13px max(10px,env(safe-area-inset-bottom));
+  gap:6px;
+  padding:max(6px,env(safe-area-inset-top)) 13px max(10px,env(safe-area-inset-bottom));
   background:radial-gradient(circle at 50% -12%,rgba(42,73,108,.20),transparent 34%),linear-gradient(180deg,#020a13,#03101a 60%,#020910);
 }
-.header{flex:0 0 46px}
-.hero{flex:1 1 0;min-height:150px}
-.info{flex:0 0 66px}
+.header{flex:0 0 44px}
+.hero{flex:1 1 0;min-height:200px}
+.info{flex:0 0 62px}
 .section{flex:0 0 auto}
-.s-seq{flex:0 0 112px}
-.s-src{flex:0 0 64px}
-.s-amb{flex:0 0 54px}
-.actions-wrap{flex:0 0 52px;position:relative}
+.s-seq{flex:0 0 92px}
+.s-src{flex:0 0 58px}
+.s-amb{flex:0 0 48px}
+.actions-wrap{flex:0 0 50px;position:relative}
 
 /* Header */
 .header{display:grid;grid-template-columns:84px 1fr 112px;align-items:center;gap:6px}
@@ -78,7 +78,7 @@ body{display:flex;justify-content:center}
 .hero.cinema{position:fixed!important;inset:0!important;z-index:60!important;border-radius:0!important;background:#000!important}
 .hero>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .hero .veil{position:absolute;inset:0;background:linear-gradient(to top,rgba(2,7,13,.86),transparent 46%)}
-.hero-top{position:absolute;z-index:2;left:11px;right:11px;top:11px;display:flex;justify-content:space-between}
+.hero-top{position:absolute;z-index:2;left:11px;right:11px;top:11px;display:flex;justify-content:flex-end}
 .iconbtn{width:36px;height:36px;border-radius:11px;border:1px solid rgba(255,255,255,.10);background:rgba(7,14,22,.55);color:#fff;font-size:16px;backdrop-filter:blur(2px);display:grid;place-items:center}
 .play-main{position:absolute;z-index:3;left:50%;top:46%;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:50%;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.5);color:#fff;font-size:22px;padding-left:4px;backdrop-filter:blur(2px);display:grid;place-items:center}
 .hero-copy{position:absolute;z-index:3;left:15px;right:15px;bottom:14px}
@@ -114,7 +114,7 @@ body{display:flex;justify-content:center}
 .clip span{position:absolute;right:3px;bottom:3px;font:600 9px ui-monospace,monospace;padding:1px 4px;border-radius:4px;background:rgba(0,0,0,.6)}
 .sep{flex:0 0 auto;width:24px;display:grid;place-items:center}
 .sep i{width:20px;height:20px;border-radius:6px;background:#0a1220;border:1px solid var(--line);display:grid;place-items:center;font-size:10px;font-style:normal;color:#aeb9cc}
-.wave{height:52px;padding:0;overflow:hidden;border:1px solid rgba(141,86,223,.28);border-radius:9px;background:#0e1630}
+.wave{height:42px;padding:0;overflow:hidden;border:1px solid rgba(141,86,223,.28);border-radius:9px;background:#0e1630}
 #strip{width:100%!important;height:100%!important;display:block!important}
 .wave i{display:block;width:2px;border-radius:2px;background:var(--purple)}
 .syncline{display:flex;align-items:center;gap:9px}
@@ -296,10 +296,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 
 <main class="app">
   <header class="header">
-    <div class="header-left">
-      <button class="round"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
-      <button class="round spark"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l1.5 5L18 8.5l-4.5 1.5L12 15l-1.5-5L6 8.5l4.5-1.5z"/></svg></button>
-    </div>
+    <div class="header-left"></div>
     <div class="brand"><h1>Studio Magot<i>✦</i></h1><p>Montage vidéo</p></div>
     <button class="export" id="expBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3m0 0L7 8m5-5l5 5M5 15v4h14v-4"/></svg> Exporter</button>
   </header>
@@ -308,7 +305,6 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
     <img src="https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?w=900&q=70" alt="">
     <div class="veil"></div>
     <div class="hero-top">
-      <button class="iconbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V4h4M4 16v4h4M20 8V4h-4M20 16v4h-4"/></svg></button>
       <button class="iconbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>
     </div>
     <button class="play-main" id="heroPlay"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5l14 7-14 7z"/></svg></button>
