@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Studio Magot — facade Kimi + moteur essentiel (index_2, non modifie) · BUILD 2026-08-06-C1 -->
+<!-- Studio Magot — facade Kimi + moteur essentiel (index_2, non modifie) · BUILD 2026-08-06-C5 -->
 
 <html lang="fr">
 <head>
@@ -292,6 +292,36 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 .hero.cinema canvas#base,.hero.cinema canvas#gl{border-radius:0!important}
 
 .hero.cinema{aspect-ratio:auto!important;height:78vh!important}
+.s-seq{flex:0 0 auto!important;flex-basis:auto!important}
+.s-seq.section{grid-template-rows:18px auto!important}
+.timeline{border:0!important;background:transparent!important;padding:0!important;border-radius:0!important;display:flex;flex-direction:column;gap:9px!important;overflow:visible!important}
+.wave{height:34px!important;border:0!important;border-radius:7px!important;background:linear-gradient(180deg,#0f1a2f,#0b1322)!important;box-shadow:inset 0 0 0 1px rgba(150,120,230,.14)!important;overflow:hidden;position:relative;padding:0!important}
+#strip{width:100%!important;height:34px!important;display:block!important;border:0!important;background:transparent!important;border-radius:0!important;margin:0!important}
+.title h3{font-size:11px!important;letter-spacing:.14em!important;color:#aeb8c6!important}
+.title button{font-size:10.5px!important;letter-spacing:.02em!important;color:var(--muted)!important;padding:2px 4px!important}
+.syncline{gap:10px!important}
+.syncline label{font:600 10.5px system-ui!important;letter-spacing:.03em!important}
+.syncline input{height:12px!important}
+.syncline .v{width:56px!important;color:var(--gold2)!important}
+.syncline .rs{padding:3px 8px!important;font-size:10px!important}
+.info .ico svg,.source .ico svg,.ambicon svg,.iconbtn svg,.cem svg{stroke-width:1.85px;stroke-linecap:round;stroke-linejoin:round}
+.source .ico,.ambicon,.cem{background:linear-gradient(158deg,#224371,#12274c)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.10),inset 0 0 0 1px rgba(130,160,225,.16),0 3px 8px rgba(0,0,0,.34)!important}
+.source .ico svg{width:15px;height:15px;color:#e6eefc}
+.ambicon{color:#eaf1fb!important}
+.cem{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;color:#eaf1fb;flex-shrink:0}
+.info .ico{filter:drop-shadow(0 0 5px rgba(224,163,62,.22))}
+.info .ico svg{width:17px;height:17px}
+.info>div:first-child .ico{color:var(--gold)!important}
+.info>div:nth-child(n+2) .ico{color:#7fb0ff!important;filter:drop-shadow(0 0 5px rgba(120,168,255,.20))}
+.source .chev{color:var(--gold)!important;opacity:.9;font-size:15px!important}
+.source p{color:rgba(232,240,251,.72)!important}
+.source{background:linear-gradient(180deg,rgba(255,255,255,.025),transparent)!important}
+.ia-on-btn{background:radial-gradient(120% 120% at 32% 20%,#F6CE7C,#E0A33E 56%,#B87F22)!important;color:#1c1305!important;border:0!important;box-shadow:0 5px 16px rgba(224,163,62,.42),inset 0 1px 0 rgba(255,255,255,.55)!important}
+.ia-on-btn svg{filter:drop-shadow(0 1px 0 rgba(255,255,255,.25))}
+.brand h1 i{color:#F0BE5A;font-style:normal;margin-left:4px;filter:drop-shadow(0 0 5px rgba(224,163,62,.5))}
+.iconbtn{box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 3px 8px rgba(0,0,0,.3)!important}
+/* Apercu : vraies proportions du cadre moteur (C5) */
+.hero canvas#gl,.hero canvas#base{object-fit:contain!important;object-position:center!important}
 </style>
 </head>
 <body>
@@ -367,7 +397,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
     <div class="title"><h3>AMBIANCE</h3></div>
     <div class="ambience" id="openAmbience">
       <div class="ambicon" id="ambIcon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20l-3-3m3 3l-3 3M2 12l4-2 3-6 3 8"/></svg></div>
-      <div class="ambtext"><b>Ambiance : <span id="ambName">Voyage</span></b><small id="ambDesc">Vivant, lumineux, aventureux</small></div>
+      <div class="ambtext"><b>Ambiance : <span id="ambName">Cinéma</span></b><small id="ambDesc">Posé, élégant, cinématographique</small></div>
       <div class="chev">›</div>
     </div>
   </section>
@@ -7357,22 +7387,23 @@ essentiaReady.then(function(ok){ if(!ok && !A){ /* silencieux : le repli se fait
   var hero=q(".hero");
   if(hero){
     hero.style.position="relative";
-    hero.style.background="#000";
+    hero.style.background="#05080f";
     var demoImg=hero.querySelector("img"); if(demoImg&&demoImg.parentNode) demoImg.parentNode.removeChild(demoImg);
     var veil=hero.querySelector(".veil"); if(veil) veil.style.display="none";
     var kick=hero.querySelector(".kicker"); if(kick) kick.style.display="none";
     var h2=hero.querySelector("h2"); if(h2) h2.style.display="none";
     var base=$("base"), gl=$("gl");
-    if(base){ base.style.cssText="position:absolute;inset:0;width:100%;height:100%;z-index:1"; hero.insertBefore(base,hero.firstChild); }
-    if(gl){ gl.style.cssText="position:absolute;inset:0;width:100%;height:100%;z-index:2"; hero.insertBefore(gl,hero.firstChild.nextSibling||null); }
+    var CANVAS_CSS="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center;display:block";
+    if(base){ base.style.cssText=CANVAS_CSS+";z-index:1"; hero.insertBefore(base,hero.firstChild); }
+    if(gl){ gl.style.cssText=CANVAS_CSS+";z-index:2"; hero.insertBefore(gl,hero.firstChild.nextSibling||null); }
     qa(".hero-top,.play-main,.hero-copy").forEach(function(e){ e.style.zIndex=5; });
     var empty=$("empty"); if(empty){ empty.style.zIndex=4; hero.appendChild(empty); }
-    var badge=$("badge"); if(badge){ badge.style.zIndex=5; hero.appendChild(badge); }
+    var badge=$("badge"); if(badge){ badge.style.display="none"; } /* bandeau debug Essentia masque */
   }
 
   /* ---------- 2) Forme d'onde reelle du moteur dans la sequence ---------- */
   var wave=$("wave"), strip=$("strip");
-  if(wave&&strip){ wave.innerHTML=""; strip.style.cssText="width:100%;height:100%;display:block"; wave.appendChild(strip); }
+  if(wave&&strip){ wave.innerHTML=""; strip.style.cssText="width:100%;display:block"; wave.appendChild(strip); }
   var zoom=$("zoom"); if(zoom){ zoom.style.display="none"; if(wave&&wave.parentNode) wave.parentNode.appendChild(zoom); }
 
   /* ---------- 3) Lecture (hero + bouton "Lire le film") ---------- */
@@ -7436,10 +7467,18 @@ essentiaReady.then(function(ok){ if(!ok && !A){ /* silencieux : le repli se fait
   var moodMap={ "cinema":"cinema", "cin\u00e9ma":"cinema", "doux":"doux", "voyage":"voyage", "dynamique":"dynamique" };
   function setInfoTile(ch){
     var icoSpan=ch.querySelector(".cem");
+    var nm=ch.getAttribute("data-name")||"";
+    var shortD=ch.getAttribute("data-short")||"";
+    var fullD=ch.getAttribute("data-desc")||shortD;
     var ico=$("infoIco"), lab=$("infoLabel"), desc=$("infoDesc");
     if(ico&&icoSpan) ico.innerHTML=icoSpan.innerHTML;
-    if(lab) lab.textContent=ch.getAttribute("data-name")||"";
-    if(desc) desc.textContent=ch.getAttribute("data-short")||ch.getAttribute("data-desc")||"";
+    if(lab) lab.textContent=nm;
+    if(desc) desc.textContent=shortD||fullD;
+    /* bandeau Ambiance du bas */
+    var aN=$("ambName"), aD=$("ambDesc"), aI=$("ambIcon");
+    if(aN) aN.textContent=nm;
+    if(aD) aD.textContent=fullD;
+    if(aI&&icoSpan) aI.innerHTML=icoSpan.innerHTML;
   }
   qa(".choice").forEach(function(ch){
     ch.onclick=function(){
@@ -7543,6 +7582,7 @@ essentiaReady.then(function(ok){ if(!ok && !A){ /* silencieux : le repli se fait
         if(infos[3]){ var c3=infos[3].querySelector("b"); if(c3) c3.textContent="\u2014"; }
         if(seqH3) seqH3.textContent="S\u00c9QUENCE";
       }
+      if(showAll) showAll.style.display=hasA?"":"none";
       refreshPlay();
       mirrorSync();
     }catch(e){}
