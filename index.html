@@ -1,4 +1,6 @@
 <!doctype html>
+<!-- Studio Magot — facade Kimi + moteur essentiel (index_2, non modifie) · BUILD 2026-08-06-C1 -->
+
 <html lang="fr">
 <head>
 <meta charset="utf-8">
@@ -289,6 +291,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 .hero canvas#base,.hero canvas#gl{position:absolute!important;inset:auto!important;top:0!important;left:50%!important;height:100%!important;width:auto!important;max-width:100%!important;transform:translateX(-50%)!important;object-fit:contain!important;z-index:1!important;border-radius:14px!important}
 .hero.cinema canvas#base,.hero.cinema canvas#gl{border-radius:0!important}
 
+.hero.cinema{aspect-ratio:auto!important;height:78vh!important}
 </style>
 </head>
 <body>
@@ -302,7 +305,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
   </header>
 
   <section class="hero">
-    <img src="https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?w=900&q=70" alt="">
+    
     <div class="veil"></div>
     <div class="hero-top">
       <button class="iconbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>
@@ -310,32 +313,32 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
     <button class="play-main" id="heroPlay"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5l14 7-14 7z"/></svg></button>
     <div class="hero-copy">
       <div class="kicker"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2C8 6 8 11 12 15c4-4 4-9 0-13z"/><circle cx="12" cy="10" r="2.5"/></svg> MONT SAINT-MICHEL · JOUR 2</div>
-      <h2>Le chemin s'ouvre sur la baie.</h2>
-      <div class="progress-row"><span>00:00</span><div class="trk"><span></span></div><span>01:12</span></div>
+      <h2></h2>
+      <div class="progress-row"><span>00:00</span><div class="trk"><span></span></div><span>—</span></div>
     </div>
   </section>
 
   <section class="info">
     <div>
       <span class="ico" id="infoIco"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20l-3-3m3 3l-3 3M2 12l4-2 3-6 3 8"/></svg></span>
-      <b id="infoLabel">Voyage</b><small id="infoDesc">Normandie</small>
+      <b id="infoLabel">Cinéma</b><small id="infoDesc">Posé</small>
     </div>
     <div>
       <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg></span>
-      <b>112 BPM</b><small>Musique</small>
+      <b>—</b><small>Musique</small>
     </div>
     <div>
       <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
-      <b>18 plans</b><small>Séquence</small>
+      <b>—</b><small>Séquence</small>
     </div>
     <div>
       <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span>
-      <b>1 min 12</b><small>Durée</small>
+      <b>—</b><small>Durée</small>
     </div>
   </section>
 
   <section class="section s-seq">
-    <div class="title"><h3>SÉQUENCE — 18 PLANS</h3><button>Afficher tout</button></div>
+    <div class="title"><h3>SÉQUENCE</h3><button>Afficher tout</button></div>
     <div class="timeline">
       <div class="wave" id="wave"></div>
       <div class="syncline"><label>Sync</label><input type="range" min="-300" max="300" value="0" id="syncR"><span class="v" id="syncV">0 ms</span><button class="rs" id="syncRs">Reset</button></div>
@@ -381,13 +384,13 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 <!-- Photos -->
 <div class="sheet-bg" data-bg="photos"><div class="sheet" style="height:80svh">
   <div class="grip"></div>
-  <div class="sh-top"><b>Photos du voyage</b><button class="done" data-close data-toast="2 photos écartées — 14 conservées">Valider</button></div>
+  <div class="sh-top"><b>Photos du voyage</b><button class="done" data-close>Valider</button></div>
   <div class="sh-body"><p class="sh-note">Tape une photo pour l'<b>écarter</b> (grisée) ou la <b>réinclure</b>. L'IA a déjà grisé les captures détectées — tu gardes le dernier mot.</p><div class="pgrid" id="pgrid"></div></div>
 </div></div>
 <!-- Video -->
 <div class="sheet-bg" data-bg="video"><div class="sheet" style="height:80svh">
   <div class="grip"></div>
-  <div class="sh-top"><b>Clips vidéo</b><button class="done" data-close data-toast="Clips vidéo mis à jour">Valider</button></div>
+  <div class="sh-top"><b>Clips vidéo</b><button class="done" data-close>Valider</button></div>
   <div class="sh-body"><p class="sh-note">Le réalisateur intercale des bouts de tes clips sur les temps forts. Tape un clip pour l'écarter.</p><div class="pgrid" id="vgrid"></div></div>
 </div></div>
 <!-- Musique -->
@@ -399,9 +402,9 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 <!-- Ambiance -->
 <div class="sheet-bg" data-bg="amb"><div class="sheet">
   <div class="grip"></div>
-  <div class="sh-top"><b>Choisir une ambiance</b><button class="done" data-close data-toast="Ambiance mise à jour">OK</button></div>
+  <div class="sh-top"><b>Choisir une ambiance</b><button class="done" data-close>OK</button></div>
   <div class="sh-body">
-    <div class="choice" data-name="Cinéma" data-desc="Posé, élégant, cinématographique" data-icon="cinema" data-short="Posé">
+    <div class="choice active" data-name="Cinéma" data-desc="Posé, élégant, cinématographique" data-icon="cinema" data-short="Posé">
       <span class="cem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l2-6h12l2 6H4zm0 0v8h16v-8"/><path d="M8 4l-2 6M16 4l2 6"/></svg></span>
       <div class="cbd"><b>Cinéma</b><small>Posé, élégant</small></div>
     </div>
@@ -409,7 +412,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
       <span class="cem"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 21l-1.5-1.5C6 15 3 12 3 8.5 3 6 5 4 7.5 4c1.5 0 3 1 4.5 2.5C13.5 5 15 4 16.5 4 19 4 21 6 21 8.5c0 3.5-3 6.5-7.5 11L12 21z"/></svg></span>
       <div class="cbd"><b>Doux</b><small>Calme, tendre</small></div>
     </div>
-    <div class="choice active" data-name="Voyage" data-desc="Vivant, lumineux, aventureux" data-icon="plane" data-short="Aventureux">
+    <div class="choice" data-name="Voyage" data-desc="Vivant, lumineux, aventureux" data-icon="plane" data-short="Aventureux">
       <span class="cem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20l-3-3m3 3l-3 3M2 12l4-2 3-6 3 8"/></svg></span>
       <div class="cbd"><b>Voyage</b><small>Vivant, lumineux, aventureux</small></div>
     </div>
@@ -427,6 +430,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
     <p class="sh-note">Choisis le format, puis lance l'export. Par défaut : <b>9:16</b> (vertical).</p>
     <div class="efmts">
       <button class="efmt on" data-ef="v"><div class="ef-sh ef-v"></div><div class="ef-tx"><b>9:16</b><span>Vertical · Stories, Reels, TikTok</span></div></button>
+      <button class="efmt" data-ef="f"><div class="ef-sh ef-v" style="width:14px"></div><div class="ef-tx"><b>4:5</b><span>Portrait · fil Instagram</span></div></button>
       <button class="efmt" data-ef="c"><div class="ef-sh ef-c"></div><div class="ef-tx"><b>1:1</b><span>Carré · fil Instagram</span></div></button>
       <button class="efmt" data-ef="h"><div class="ef-sh ef-h"></div><div class="ef-tx"><b>16:9</b><span>Paysage · YouTube</span></div></button>
     </div>
@@ -7325,244 +7329,239 @@ var _eb=document.getElementById("exportBtn"); if(_eb) _eb.onclick=function(){ ex
 initGL(); paintStrip(0); updateBadge();
 essentiaReady.then(function(ok){ if(!ok && !A){ /* silencieux : le repli se fait à l'analyse */ } });
 </script>
+
+
 <script>
+/* ============================================================
+   LIAISON — façade Kimi  <->  moteur essentiel (index_2)
+   Le moteur n'est PAS modifie. Chaque controle visible relaie
+   vers le vrai element / handler du moteur. Affichage en lecture
+   seule depuis l'etat reel (A, SEGS, MOOD, playing, audioEl).
+   Regle "sobre et vrai" : aucune donnee inventee, "—" tant que
+   rien n'est charge, aucun bouton mort, aucun faux message.
+   ============================================================ */
 (function(){
+  "use strict";
+  function $(id){ return document.getElementById(id); }
+  function q(s){ return document.querySelector(s); }
+  function qa(s){ return Array.prototype.slice.call(document.querySelectorAll(s)); }
+  function mmss(s){ s=Math.max(0,s||0); var m=Math.floor(s/60),x=Math.round(s%60); return m+":"+(x<10?"0":"")+x; }
+  function durTxt(s){ s=Math.max(0,s||0); var m=Math.floor(s/60),x=Math.round(s%60); return m>0?(m+" min "+(x<10?"0":"")+x):(x+" s"); }
 
-"use strict";
-function el(t,c,h){ var e=document.createElement(t); if(c)e.className=c; if(h!=null)e.innerHTML=h; return e; }
+  var PLAY_HERO='<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5l14 7-14 7z"/></svg>';
+  var PAUSE_HERO='<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>';
+  var PLAY_S='<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5l14 7-14 7z"/></svg>';
+  var PAUSE_S='<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>';
 
-/* Icon SVG library */
-var icoLib={
-  plane:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20l-3-3m3 3l-3 3M2 12l4-2 3-6 3 8"/></svg>',
-  heart:'<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 21l-1.5-1.5C6 15 3 12 3 8.5 3 6 5 4 7.5 4c1.5 0 3 1 4.5 2.5C13.5 5 15 4 16.5 4 19 4 21 6 21 8.5c0 3.5-3 6.5-7.5 11L12 21z"/></svg>',
-  cinema:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l2-6h12l2 6H4zm0 0v8h16v-8"/><path d="M8 4l-2 6M16 4l2 6"/></svg>',
-  bolt:'<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>',
-  music:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg>',
-  check:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
-  plus:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>',
-  download:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3m0 12l-4-4m4 4l4-4M4 17v4h16v-4"/></svg>'
-};
-
-/* Toast system */
-var toastEl=document.getElementById("toast"), toastTimer=null;
-function showToast(msg){
-  toastEl.innerHTML=msg;
-  toastEl.classList.add("show");
-  clearTimeout(toastTimer);
-  toastTimer=setTimeout(function(){ toastEl.classList.remove("show"); },2200);
-}
-
-/* timeline : vignettes + transitions */
-/* wave */
-var wave=document.getElementById("wave"); var prev=10;
-for(var i=0;i<110;i++){ var t=i/110; var env=Math.sin(t*Math.PI*0.9)*0.6+0.4; var tg=(4+Math.abs(Math.sin(i*0.31)+Math.cos(i*0.13))*13)*env+(Math.random()*5-2.5); prev=prev*0.5+tg*0.5; var b=el("i"); b.style.height=Math.max(3,Math.min(21,prev))+"px"; wave.appendChild(b); }
-
-/* sync */
-var sr=document.getElementById("syncR"), sv=document.getElementById("syncV");
-sr.oninput=function(){ sv.textContent=(sr.value>0?"+":"")+sr.value+" ms"; };
-document.getElementById("syncRs").onclick=function(){ sr.value=0; sv.textContent="0 ms"; };
-
-/* lecture */
-var playing=false, hp=document.getElementById("heroPlay"), wb=document.getElementById("watchBtn");
-function togglePlay(){ playing=!playing; hp.innerHTML=playing?'<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>':'<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5l14 7-14 7z"/></svg>'; wb.innerHTML=playing?'<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg> Pause':'<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5l14 7-14 7z"/></svg> Lire le film'; }
-hp.onclick=togglePlay; wb.onclick=togglePlay;
-
-/* feuilles */
-function openSheet(n){ document.querySelector('.sheet-bg[data-bg="'+n+'"]').classList.add("show"); }
-function closeSheets(){ document.querySelectorAll(".sheet-bg").forEach(function(e){e.classList.remove("show");}); }
-document.querySelectorAll(".source[data-sheet]").forEach(function(b){ b.onclick=function(){ openSheet(b.getAttribute("data-sheet")); }; });
-document.getElementById("openAmbience").onclick=function(){ openSheet("amb"); };
-document.getElementById("expBtn").onclick=function(){ openSheet("export"); };
-document.querySelectorAll("[data-close]").forEach(function(b){ 
-  b.onclick=function(){
-    var msg=b.getAttribute("data-toast");
-    closeSheets();
-    if(msg) setTimeout(function(){ showToast(msg); }, 280);
-  }; 
-});
-document.querySelectorAll(".sheet-bg").forEach(function(bg){ bg.onclick=function(e){ if(e.target===bg) closeSheets(); }; });
-
-/* export format */
-var efLbl={v:"9:16",c:"1:1",h:"16:9"};
-document.querySelectorAll(".efmt").forEach(function(b){ b.onclick=function(){ document.querySelectorAll(".efmt").forEach(function(x){x.classList.remove("on");}); b.classList.add("on"); document.getElementById("doExport").innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="display:inline-block;vertical-align:middle;margin-right:4px"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> Exporter en '+efLbl[b.getAttribute("data-ef")]; }; });
-
-/* photos */
-var demo=["1523906834658-6e24ef2386f9","1500534623283-312aade485b7","1502602898657-3e91760cbb34","1499856871958-5b9627545d1a","1467269204594-9661b134dd2b","1504609773096-104ff2c73ba4","1520250497591-112f2f40a3f4","1533105079780-92b9be482077","1526772662000-3f88f10405ff","1491557345352-5929e343eb89","1520939817895-060bdaf4fe1b","1534430480872-3498386e7856"];
-var pg=document.getElementById("pgrid");
-demo.forEach(function(id,i){ var off=(i===3||i===8); var d=el("div","pg"+(off?" off":"")); d.innerHTML='<img src="https://images.unsplash.com/photo-'+id+'?w=240&q=55"><div class="mk">'+(off?"+":"✓")+'</div>'+(off?'<div class="auto">capture</div>':''); d.onclick=function(){ d.classList.toggle("off"); d.querySelector(".mk").textContent=d.classList.contains("off")?"+":"✓"; }; pg.appendChild(d); });
-pg.appendChild(el("div","addtile",icoLib.plus+'<span>Ajouter</span>'));
-var vg=document.getElementById("vgrid");
-["1516035069371-29a1b244cc32","1502920917128-1aa500764cbd"].forEach(function(id){ var d=el("div","pg"); d.innerHTML='<img src="https://images.unsplash.com/photo-'+id+'?w=240&q=55"><div class="mk">✓</div><div class="auto">▶ clip</div>'; d.onclick=function(){ d.classList.toggle("off"); d.querySelector(".mk").textContent=d.classList.contains("off")?"+":"✓"; }; vg.appendChild(d); });
-vg.appendChild(el("div","addtile",icoLib.plus+'<span>Ajouter</span>'));
-
-/* musique : telecharger -> utiliser */
-var tracks=[];
-var ml=document.getElementById("mlist");
-function renderMusic(){ ml.innerHTML="";
-  tracks.forEach(function(t,idx){ var name=t[0],dur=t[1],dl=t[2],sel=t[3],def=t[4];
-    var r=el("div","trk2"+(sel?" on":""));
-    var right = sel ? '<div class="chk">'+icoLib.check+'</div>' : (dl ? '<button class="act use">Utiliser</button>' : '<button class="act dl">'+icoLib.download+' Télécharger</button>');
-    r.innerHTML='<div class="tic">'+icoLib.music+'</div><div class="ttx"><b>'+name+(def?'<span class="tagdef">par défaut</span>':'')+'</b><span>'+dur+' · bibliothèque Magot</span></div>'+right;
-    var actBtn=r.querySelector(".act");
-    if(actBtn){ actBtn.onclick=function(e){ e.stopPropagation();
-      if(!dl){ actBtn.innerHTML='<span class="spin"></span>'; setTimeout(function(){ tracks[idx][2]=true; renderMusic(); showToast("Téléchargement terminé"); },900); }
-      else { tracks.forEach(function(x){x[3]=false;}); tracks[idx][3]=true; renderMusic(); document.getElementById("srcMus").textContent=name.split(" — ")[0]; showToast("Musique changée : "+name.split(" — ")[0]); }
-    }; }
-    ml.appendChild(r);
-  });
-}
-renderMusic();
-
-/* ambiance — met a jour aussi la tuile Info */
-document.querySelectorAll(".choice").forEach(function(ch){ ch.onclick=function(){
-  document.querySelectorAll(".choice").forEach(function(x){x.classList.remove("active");}); ch.classList.add("active");
-  var iconName=ch.dataset.icon;
-  document.getElementById("ambName").textContent=ch.dataset.name;
-  document.getElementById("ambDesc").textContent=ch.dataset.desc;
-  document.getElementById("ambIcon").innerHTML=icoLib[iconName];
-  document.getElementById("infoIco").innerHTML=icoLib[iconName];
-  document.getElementById("infoLabel").textContent=ch.dataset.name;
-  document.getElementById("infoDesc").textContent=ch.dataset.short;
-  setTimeout(closeSheets,140);
-}; });
-
-/* IA bouton */
-document.getElementById("iaBtn").onclick=function(e){
-  e.stopPropagation();
-  showToast("⚡ IA en cours d'analyse…");
-};
-
-try{window.showToast=showToast;}catch(e){}
-try{window.__kToggle=togglePlay;}catch(e){}
-})();
-</script>
-<script>
-/* ====== PONT design Kimi <-> moteur ====== */
-(function(){
-  function $(id){return document.getElementById(id);}
-  function q(s){return document.querySelector(s);}
-  function fmt(s){ s=Math.max(0,s||0); var m=Math.floor(s/60),x=Math.round(s%60); return m+':'+(x<10?'0':'')+x; }
-  var PLAY_SVG='<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5l14 7-14 7z"/></svg>';
-  var PAUSE_SVG='<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>';
-  var WPLAY='<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5l14 7-14 7z"/></svg> Lire le film';
-  var WPAUSE='<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg> Pause';
-
-  /* 1) canvas moteur dans l'aperçu */
-  var hero=q('.hero');
+  /* ---------- 1) Apercu : canvases moteur dans le hero ---------- */
+  var hero=q(".hero");
   if(hero){
-    var im=hero.querySelector('img'); if(im) im.style.display='none';
-    var vl=hero.querySelector('.veil'); if(vl) vl.style.display='none';
-    var kk=hero.querySelector('.kicker'); if(kk) kk.style.display='none';
-    var hh=hero.querySelector('h2'); if(hh) hh.style.display='none';
-    hero.style.background='transparent';
-    var b=$('base'), g=$('gl');
-    if(b) hero.appendChild(b);
-    if(g) hero.appendChild(g);
-    ['.hero-top','.play-main','.hero-copy'].forEach(function(s){ var e=hero.querySelector(s); if(e) e.style.zIndex=4; });
+    hero.style.position="relative";
+    hero.style.background="#000";
+    var demoImg=hero.querySelector("img"); if(demoImg&&demoImg.parentNode) demoImg.parentNode.removeChild(demoImg);
+    var veil=hero.querySelector(".veil"); if(veil) veil.style.display="none";
+    var kick=hero.querySelector(".kicker"); if(kick) kick.style.display="none";
+    var h2=hero.querySelector("h2"); if(h2) h2.style.display="none";
+    var base=$("base"), gl=$("gl");
+    if(base){ base.style.cssText="position:absolute;inset:0;width:100%;height:100%;z-index:1"; hero.insertBefore(base,hero.firstChild); }
+    if(gl){ gl.style.cssText="position:absolute;inset:0;width:100%;height:100%;z-index:2"; hero.insertBefore(gl,hero.firstChild.nextSibling||null); }
+    qa(".hero-top,.play-main,.hero-copy").forEach(function(e){ e.style.zIndex=5; });
+    var empty=$("empty"); if(empty){ empty.style.zIndex=4; hero.appendChild(empty); }
+    var badge=$("badge"); if(badge){ badge.style.zIndex=5; hero.appendChild(badge); }
   }
 
-  /* 1b) vraie forme d'onde du moteur (beats + repère) dans la Séquence */
-  (function(){ var strip=$('strip'), wv=$('wave'); if(strip&&wv){ wv.innerHTML=''; strip.style.cssText='width:100%;height:100%;display:block'; wv.appendChild(strip); if(typeof window.paintStrip==='function'){ try{ window.paintStrip(0); }catch(e){} } } })();
+  /* ---------- 2) Forme d'onde reelle du moteur dans la sequence ---------- */
+  var wave=$("wave"), strip=$("strip");
+  if(wave&&strip){ wave.innerHTML=""; strip.style.cssText="width:100%;height:100%;display:block"; wave.appendChild(strip); }
+  var zoom=$("zoom"); if(zoom){ zoom.style.display="none"; if(wave&&wave.parentNode) wave.parentNode.appendChild(zoom); }
 
-  /* 2) lecture */
-  function syncIcons(){ setTimeout(function(){ var pl=!!window.playing; var hp=$('heroPlay'),wb=$('watchBtn'); if(hp) hp.innerHTML=pl?PAUSE_SVG:PLAY_SVG; if(wb) wb.innerHTML=pl?WPAUSE:WPLAY; },40); }
-  function bridgePlay(){ var ep=$('play'); if(ep) ep.click(); syncIcons(); }
-  var hp=$('heroPlay'), wb=$('watchBtn');
-  if(hp) hp.onclick=bridgePlay;
-  if(wb) wb.onclick=bridgePlay;
+  /* ---------- 3) Lecture (hero + bouton "Lire le film") ---------- */
+  function refreshPlay(){
+    var pl=(typeof playing!=="undefined")&&playing;
+    var hp=$("heroPlay"), wb=$("watchBtn");
+    if(hp) hp.innerHTML=pl?PAUSE_HERO:PLAY_HERO;
+    if(wb) wb.innerHTML=pl?(PAUSE_S+" Pause"):(PLAY_S+" Lire le film");
+  }
+  function relayPlay(){ var p=$("play"); if(p) p.click(); setTimeout(refreshPlay,40); }
+  ["heroPlay","watchBtn"].forEach(function(id){ var b=$(id); if(b) b.onclick=relayPlay; });
 
-  /* 3) sync */
-  var kS=$('syncR'), kSV=$('syncV'), eS=$('sync'), eR=$('syncReset');
-  if(kS&&eS){ kS.oninput=function(){ eS.value=kS.value; eS.dispatchEvent(new Event('input')); if(kSV) kSV.textContent=(kS.value>0?'+':'')+kS.value+' ms'; }; }
-  var kRs=$('syncRs'); if(kRs) kRs.onclick=function(){ if(eR) eR.click(); if(kS) kS.value=0; if(kSV) kSV.textContent='0 ms'; };
+  /* ---------- 4) Feuilles (sources / ambiance / export) ---------- */
+  function openSheet(n){ var s=q('.sheet-bg[data-bg="'+n+'"]'); if(s) s.classList.add("show"); }
+  function closeSheets(){ qa(".sheet-bg").forEach(function(e){ e.classList.remove("show"); }); }
+  qa(".source[data-sheet]").forEach(function(b){ b.onclick=function(){ openSheet(b.getAttribute("data-sheet")); }; });
+  var oa=$("openAmbience"); if(oa) oa.onclick=function(){ openSheet("amb"); };
+  var eb=$("expBtn"); if(eb) eb.onclick=function(){ openSheet("export"); };
+  qa("[data-close]").forEach(function(b){ b.onclick=closeSheets; });
+  qa(".sheet-bg").forEach(function(bg){ bg.onclick=function(e){ if(e.target===bg) closeSheets(); }; });
 
-  /* 3b) seek : glisser sur la barre de progression */
+  /* ---------- 5) Musique : charger un fichier reel ---------- */
+  var msBody=q('.sheet-bg[data-bg="music"] .sh-body');
+  if(msBody){
+    msBody.innerHTML="";
+    var mnote=document.createElement("p"); mnote.className="sh-note";
+    mnote.textContent="Bibliotheque curee par l'administrateur — a venir. Pour l'instant, charge une musique : le realisateur cale les coupes sur son tempo.";
+    var mbtn=document.createElement("button"); mbtn.className="doexp"; mbtn.style.margin="12px 0 0"; mbtn.textContent="\uFF0B Charger une musique";
+    mbtn.onclick=function(){ var p=$("pickMusic"); if(p) p.click(); };
+    msBody.appendChild(mnote); msBody.appendChild(mbtn);
+  }
+  var fM=$("fMusic");
+  if(fM) fM.addEventListener("change",function(){
+    if(this.files&&this.files[0]){ var nm=this.files[0].name.replace(/\.[^.]+$/,""); var sm=$("srcMus"); if(sm) sm.textContent=nm; }
+  });
+
+  /* ---------- 6) Photos : vrai #thumbs + ajouter ---------- */
+  var psBody=q('.sheet-bg[data-bg="photos"] .sh-body');
+  if(psBody){
+    psBody.innerHTML="";
+    var pnote=document.createElement("p"); pnote.className="sh-note";
+    pnote.innerHTML="Ajoute tes photos, puis <b>tape une vignette</b> pour l'ecarter (grisee) ou la reinclure.";
+    var pbtn=document.createElement("button"); pbtn.className="doexp"; pbtn.style.margin="12px 0"; pbtn.textContent="\uFF0B Ajouter des photos";
+    pbtn.onclick=function(){ var p=$("pickPhotos"); if(p) p.click(); };
+    psBody.appendChild(pnote); psBody.appendChild(pbtn);
+    var th=$("thumbs"); if(th){ th.style.cssText="display:flex;flex-wrap:wrap;gap:6px"; psBody.appendChild(th); }
+  }
+
+  /* ---------- 7) Video : ajouter des clips ---------- */
+  var vsBody=q('.sheet-bg[data-bg="video"] .sh-body');
+  if(vsBody){
+    vsBody.innerHTML="";
+    var vnote=document.createElement("p"); vnote.className="sh-note";
+    vnote.textContent="Ajoute des clips — le realisateur les place sur les temps forts.";
+    var vbtn=document.createElement("button"); vbtn.className="doexp"; vbtn.style.margin="12px 0 0"; vbtn.textContent="\uFF0B Ajouter des clips";
+    vbtn.onclick=function(){ var p=$("pickVideo"); if(p) p.click(); };
+    vsBody.appendChild(vnote); vsBody.appendChild(vbtn);
+  }
+
+  /* ---------- 8) Ambiance -> vrai mode moteur + tuile Info ---------- */
+  var moodMap={ "cinema":"cinema", "cin\u00e9ma":"cinema", "doux":"doux", "voyage":"voyage", "dynamique":"dynamique" };
+  function setInfoTile(ch){
+    var icoSpan=ch.querySelector(".cem");
+    var ico=$("infoIco"), lab=$("infoLabel"), desc=$("infoDesc");
+    if(ico&&icoSpan) ico.innerHTML=icoSpan.innerHTML;
+    if(lab) lab.textContent=ch.getAttribute("data-name")||"";
+    if(desc) desc.textContent=ch.getAttribute("data-short")||ch.getAttribute("data-desc")||"";
+  }
+  qa(".choice").forEach(function(ch){
+    ch.onclick=function(){
+      qa(".choice").forEach(function(x){ x.classList.remove("active"); });
+      ch.classList.add("active");
+      var md=moodMap[(ch.getAttribute("data-name")||"").toLowerCase()]||"cinema";
+      var mb=q('.mood[data-mood="'+md+'"]'); if(mb) mb.click();
+      setInfoTile(ch);
+      mirrorSync();
+      setTimeout(closeSheets,140);
+    };
+  });
+
+  /* ---------- 9) Sync : slider + valeur = ms reelle du moteur ---------- */
+  var kR=$("syncR"), kV=$("syncV"), kRs=$("syncRs");
+  var eS=$("sync"), eV=$("syncVal"), eRs=$("syncReset");
+  if(kR&&eS){ kR.min=eS.min; kR.max=eS.max; kR.step=eS.step; }
+  function mirrorSync(){
+    if(eS&&kR&&document.activeElement!==kR) kR.value=eS.value;
+    if(eV&&kV) kV.textContent=eV.textContent;
+  }
+  if(kR&&eS){ kR.oninput=function(){ eS.value=kR.value; eS.dispatchEvent(new Event("input")); mirrorSync(); }; }
+  if(kRs){ kRs.onclick=function(){ if(eRs) eRs.click(); mirrorSync(); }; }
+
+  /* ---------- 10) Seek sur la barre de progression ---------- */
   (function(){
-    var row=q('.hero .progress-row'), trk=q('.hero .trk'); if(!row||!trk) return;
-    function seekAt(x){ var A=window.A; if(!A||!A.dur||!window.audioEl) return; var r=trk.getBoundingClientRect(); var f=Math.max(0,Math.min(1,(x-r.left)/(r.width||1))); try{ window.audioEl.currentTime=f*A.dur; }catch(e){} var fl=q('.hero .trk span'); if(fl) fl.style.width=(f*100)+'%'; }
-    var sk=false;
-    row.style.cursor='pointer'; row.style.touchAction='none';
-    row.addEventListener('pointerdown',function(e){ sk=true; seekAt(e.clientX); try{row.setPointerCapture(e.pointerId);}catch(x){} e.preventDefault(); });
-    row.addEventListener('pointermove',function(e){ if(sk) seekAt(e.clientX); });
-    window.addEventListener('pointerup',function(){ sk=false; });
+    var row=q(".hero .progress-row"), trk=q(".hero .trk");
+    if(!row||!trk) return;
+    row.style.touchAction="none"; row.style.cursor="pointer";
+    function seekAt(x){
+      if(typeof A==="undefined"||!A||!A.dur||typeof audioEl==="undefined"||!audioEl) return;
+      var r=trk.getBoundingClientRect();
+      var f=Math.max(0,Math.min(1,(x-r.left)/(r.width||1)));
+      try{ audioEl.currentTime=f*A.dur; }catch(e){}
+      var fl=q(".hero .trk span"); if(fl) fl.style.width=(f*100)+"%";
+    }
+    var down=false;
+    row.addEventListener("pointerdown",function(e){ down=true; seekAt(e.clientX); try{ row.setPointerCapture(e.pointerId); }catch(x){} e.preventDefault(); });
+    row.addEventListener("pointermove",function(e){ if(down) seekAt(e.clientX); });
+    window.addEventListener("pointerup",function(){ down=false; });
   })();
 
-  /* 4) Photos : vrai #thumbs + Ajouter (tap-exclure conservé par le moteur) */
-  var ps=q('.sheet-bg[data-bg="photos"] .sh-body');
-  if(ps){
-    ps.innerHTML='<p class="sh-note">Ajoute tes photos, puis <b>tape une vignette</b> pour l\'écarter (grisée) ou la réinclure. L\'IA grise déjà les captures détectées.</p>';
-    var ab=document.createElement('button'); ab.className='doexp'; ab.style.margin='0 0 14px'; ab.innerHTML='＋ Ajouter des photos'; ab.onclick=function(){ var f=$('fPhotos'); if(f) f.click(); };
-    ps.appendChild(ab);
-    var th=$('thumbs'); if(th){ th.style.cssText='display:flex;flex-wrap:wrap;gap:6px'; ps.appendChild(th); }
-  }
-
-  /* 5) Vidéo : Ajouter */
-  var vs=q('.sheet-bg[data-bg="video"] .sh-body');
-  if(vs){
-    vs.innerHTML='<p class="sh-note">Ajoute des clips — le réalisateur les intercale sur les temps forts.</p>';
-    var vb=document.createElement('button'); vb.className='doexp'; vb.innerHTML='＋ Ajouter des clips'; vb.onclick=function(){ var f=$('fVideo'); if(f) f.click(); };
-    vs.appendChild(vb);
-  }
-
-  /* 6) Musique : charger un fichier (test) en haut du panneau */
-  var ms=q('.sheet-bg[data-bg="music"] .sh-body');
-  if(ms){
-    var mb=document.createElement('button'); mb.className='doexp'; mb.style.margin='0 0 14px'; mb.innerHTML='＋ Charger une musique (test)'; mb.onclick=function(){ var f=$('fMusic'); if(f) f.click(); };
-    ms.insertBefore(mb, ms.firstChild);
-    var mnote=q('.sheet-bg[data-bg="music"] .sh-note'); if(mnote) mnote.innerHTML="Biblioth\u00e8que cur\u00e9e par l'administrateur \u2014 \u00e0 venir. Pour tester, charge une musique avec le bouton ci-dessus ; le r\u00e9alisateur cale les coupes sur son tempo.";
-  }
-  var fmEl=$('fMusic'); if(fmEl) fmEl.addEventListener('change',function(){ if(this.files&&this.files[0]){ var nm=this.files[0].name.replace(/\.[^.]+$/,''); var sm=$('srcMus'); if(sm) sm.textContent=nm; } });
-
-  /* 7) Ambiance -> mode moteur (fiabilisé + retour) */
-  var moodMap={'cin\u00e9ma':'cinema','cinema':'cinema','doux':'doux','voyage':'voyage','dynamique':'dynamique'};
-  function applyMood(nm){
-    var md=moodMap[(nm||'').toLowerCase()]||'cinema';
-    var mbn=document.querySelector('.mood[data-mood="'+md+'"]');
-    if(mbn){ mbn.click(); try{ if(window.paintStrip) window.paintStrip((window.playing&&window.visualTime)?window.visualTime():0); }catch(e){} if(window.showToast) window.showToast('Ambiance : '+nm+' appliqu\u00e9e'); return true; }
-    return false;
-  }
-  document.querySelectorAll('.choice').forEach(function(ch){
-    ch.addEventListener('click',function(){ applyMood(ch.getAttribute('data-name')||''); });
+  /* ---------- 11) Export : format (dont 4:5) + lancement moteur ---------- */
+  var efMap={ v:"9:16", f:"4:5", c:"1:1", h:"16:9" };
+  qa(".efmt").forEach(function(b){
+    b.onclick=function(){
+      qa(".efmt").forEach(function(x){ x.classList.remove("on"); });
+      b.classList.add("on");
+      var name=efMap[b.getAttribute("data-ef")]||"9:16";
+      var fb=q('.fmt[data-n="'+name+'"]'); if(fb) fb.click();
+      var de=$("doExport");
+      if(de){ var last=de.lastChild; if(last&&last.nodeType===3) last.textContent=" Exporter en "+name; }
+    };
   });
+  var doExp=$("doExport");
+  if(doExp) doExp.onclick=function(){ closeSheets(); var xb=$("exportBtn"); if(xb) xb.click(); };
 
-  /* 8) Export : format + lancement */
-  var dims={v:[540,960,'9:16'],c:[720,720,'1:1'],h:[960,540,'16:9']};
-  document.querySelectorAll('.efmt').forEach(function(b){ b.addEventListener('click',function(){ var d=dims[b.getAttribute('data-ef')]; if(d&&typeof window.setFormat==='function') window.setFormat(d[0],d[1],d[2]); }); });
-  var de=$('doExport'); if(de) de.onclick=function(){ document.querySelectorAll('.sheet-bg').forEach(function(e){e.classList.remove('show');}); if(typeof window.exportFast==='function') window.exportFast(); };
+  /* ---------- 12) IA : recalcul reel du montage ---------- */
+  var ia=$("iaBtn");
+  if(ia) ia.onclick=function(e){ e.stopPropagation(); var r=$("restart"); if(r) r.click(); };
 
-  /* 9) IA : recalcul du réalisateur */
-  var ia=$('iaBtn'); if(ia) ia.onclick=function(e){ e.stopPropagation(); var rb=$('restart'); if(rb) rb.click(); if(window.showToast) window.showToast('⚡ Montage recalculé'); };
+  /* ---------- 13) Icone agrandir (apercu plein cadre) — action reelle ---------- */
+  var expandBtn=hero?hero.querySelector(".hero-top .iconbtn"):null;
+  if(expandBtn&&hero) expandBtn.onclick=function(){ hero.classList.toggle("cinema"); };
 
+  /* ---------- 14) "Afficher tout" -> montre le zoom des temps ---------- */
+  var showAll=q(".s-seq .title button");
+  if(showAll&&zoom) showAll.onclick=function(){
+    var on=zoom.style.display==="none";
+    zoom.style.display=on?"block":"none";
+    showAll.textContent=on?"Masquer":"Afficher tout";
+  };
 
-  /* 11) cosmétiques branchés */
-  var closeBtn=document.querySelector('.header .round');
-  if(closeBtn) closeBtn.onclick=function(){ try{ if(window.playing){ var ep=$('play'); if(ep) ep.click(); } }catch(e){} if(window.showToast) window.showToast('Studio fermé (démo)'); };
-  var heroTopBtns=hero?hero.querySelectorAll('.iconbtn'):[];
-  var fsBtn=heroTopBtns[1]||heroTopBtns[0];
-  if(fsBtn) fsBtn.onclick=function(){ if(hero){ hero.classList.toggle('cinema'); if(window.showToast) window.showToast(hero.classList.contains('cinema')?'Plein écran':'Aperçu normal'); } };
-  var showAll=document.querySelector('.s-seq .title button');
-  if(showAll) showAll.onclick=function(){ try{ var A=window.A,n=(window.SEGS&&window.SEGS.length)||0,bpm=A?Math.round(A.bpmFelt||A.bpm||0):0,md=window.MOOD||'—'; if(window.showToast) window.showToast(n+' plans · '+(bpm?bpm+' BPM':'—')+' · mode '+md); }catch(e){} };
+  /* ---------- 15) Boucle d'affichage (lecture seule, jamais inventee) ---------- */
+  function tick(){
+    try{
+      var infos=qa(".info>div");
+      var seqH3=q(".s-seq .title h3");
+      var hasA=(typeof A!=="undefined")&&A;
+      var np=(typeof SEGS!=="undefined"&&SEGS)?SEGS.length:0;
+      if(hasA){
+        var cur=(typeof audioEl!=="undefined"&&audioEl?audioEl.currentTime:0)||0;
+        var dur=A.dur||0;
+        var frac=dur?Math.min(1,cur/dur):0;
+        var fill=q(".hero .trk span"); if(fill) fill.style.width=(frac*100).toFixed(1)+"%";
+        var ts=qa(".hero .progress-row > span");
+        if(ts[0]) ts[0].textContent=mmss(cur);
+        if(ts[1]) ts[1].textContent=dur?mmss(dur):"\u2014";
+        var bpm=Math.round(A.bpmFelt||A.bpm||0);
+        if(infos[1]){ var b1=infos[1].querySelector("b"); if(b1) b1.textContent=bpm?(bpm+" BPM"):"\u2014"; }
+        if(infos[2]){ var b2=infos[2].querySelector("b"); if(b2) b2.textContent=np?(np+" plans"):"\u2014"; }
+        if(infos[3]){ var b3=infos[3].querySelector("b"); if(b3) b3.textContent=dur?durTxt(dur):"\u2014"; }
+        if(seqH3) seqH3.textContent=np?("S\u00c9QUENCE \u2014 "+np+" PLANS"):"S\u00c9QUENCE";
+      }else{
+        var ts0=qa(".hero .progress-row > span");
+        if(ts0[0]) ts0[0].textContent="0:00";
+        if(ts0[1]) ts0[1].textContent="\u2014";
+        var fill0=q(".hero .trk span"); if(fill0) fill0.style.width="0%";
+        if(infos[1]){ var c1=infos[1].querySelector("b"); if(c1) c1.textContent="\u2014"; }
+        if(infos[2]){ var c2=infos[2].querySelector("b"); if(c2) c2.textContent="\u2014"; }
+        if(infos[3]){ var c3=infos[3].querySelector("b"); if(c3) c3.textContent="\u2014"; }
+        if(seqH3) seqH3.textContent="S\u00c9QUENCE";
+      }
+      refreshPlay();
+      mirrorSync();
+    }catch(e){}
+    requestAnimationFrame(tick);
+  }
 
-  /* 10) fiche BPM / plans / durée depuis l'état moteur */
-  setInterval(function(){ try{
-    var A=window.A;
-    var infoDivs=document.querySelectorAll('.info>div');
-    if(A){
-      var cur=(window.audioEl?window.audioEl.currentTime:0)||0;
-      var frac=A.dur?Math.min(1,cur/A.dur):0;
-      var fill=q('.hero .trk span'); if(fill) fill.style.width=(frac*100).toFixed(1)+'%';
-      var ts=document.querySelectorAll('.hero .progress-row > span'); if(ts[0]) ts[0].textContent=fmt(cur); if(ts[1]&&A.dur) ts[1].textContent=fmt(A.dur);
-      var h3=q('.s-seq .title h3'); if(h3){ var np=(window.SEGS&&window.SEGS.length)||0; if(np) h3.textContent='S\u00c9QUENCE \u2014 '+np+' PLANS'; }
-      var bpm=A.bpmFelt||A.bpm||0;
-      if(infoDivs[1]){ var bb=infoDivs[1].querySelector('b'); if(bb&&bpm) bb.textContent=Math.round(bpm)+' BPM'; }
-      if(infoDivs[2]){ var pb=infoDivs[2].querySelector('b'); var n=(window.SEGS&&window.SEGS.length)||0; if(pb) pb.textContent=n+' plans'; }
-      if(infoDivs[3]){ var db=infoDivs[3].querySelector('b'); if(db&&A.dur){ var m=Math.floor(A.dur/60),s=Math.round(A.dur%60); db.textContent=(m>0?(m+' min '+(s<10?'0':'')+s):(s+' s')); } }
-    }
-    syncIcons();
-  }catch(e){} }, 250);
-  /* progression fluide */
-  setInterval(function(){ try{ var A=window.A; if(A&&A.dur){ var cur=(window.audioEl?window.audioEl.currentTime:0)||0; var fr=Math.min(1,cur/A.dur); var f=q('.hero .trk span'); if(f) f.style.width=(fr*100).toFixed(1)+'%'; var ts=document.querySelectorAll('.hero .progress-row > span'); if(ts[0]) ts[0].textContent=fmt(cur); } }catch(e){} }, 200);
+  /* ---------- init : refleter le mode reel du moteur (defaut cinema) ---------- */
+  (function initMood(){
+    var cur=(typeof MOOD!=="undefined")?MOOD:"cinema";
+    var name={cinema:"Cin\u00e9ma",doux:"Doux",voyage:"Voyage",dynamique:"Dynamique"}[cur]||"Cin\u00e9ma";
+    var ch=qa(".choice").filter(function(c){ return (c.getAttribute("data-name")||"").toLowerCase()===name.toLowerCase(); })[0];
+    qa(".choice").forEach(function(x){ x.classList.remove("active"); });
+    if(ch){ ch.classList.add("active"); setInfoTile(ch); }
+  })();
+
+  mirrorSync();
+  requestAnimationFrame(tick);
 })();
+
 </script>
 </body>
 </html>
