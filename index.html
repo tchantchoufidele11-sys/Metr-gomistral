@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Studio Magot — facade Kimi + moteur essentiel (index_2, non modifie) · BUILD 2026-08-06-C5 -->
+<!-- Studio Magot — facade Kimi + moteur Option A (transition sur le temps) · BUILD 2026-08-06-C6 -->
 
 <html lang="fr">
 <head>
@@ -320,8 +320,9 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 .ia-on-btn svg{filter:drop-shadow(0 1px 0 rgba(255,255,255,.25))}
 .brand h1 i{color:#F0BE5A;font-style:normal;margin-left:4px;filter:drop-shadow(0 0 5px rgba(224,163,62,.5))}
 .iconbtn{box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 3px 8px rgba(0,0,0,.3)!important}
-/* Apercu : vraies proportions du cadre moteur (C5) */
-.hero canvas#gl,.hero canvas#base{object-fit:contain!important;object-position:center!important}
+.hero canvas#gl,.hero canvas#base{object-fit:contain!important;object-position:center!important;pointer-events:none!important}
+.hero .play-main,.hero .hero-top,.hero .hero-copy{transition:opacity .28s ease}
+.hero.chrome-hidden .play-main,.hero.chrome-hidden .hero-top,.hero.chrome-hidden .hero-copy{opacity:0!important;pointer-events:none!important}
 </style>
 </head>
 <body>
@@ -7103,16 +7104,20 @@ function loop(){
   var idx=-1; for(var i=0;i<SEGS.length;i++){ if(t>=SEGS[i].start && t<SEGS[i].end){ idx=i; break; } }
   if(idx<0 && SEGS.length) idx=(t<SEGS[0].start)?0:SEGS.length-1;
   var sg=(idx>=0)?SEGS[idx]:null, prev=(idx>0)?SEGS[idx-1]:null, into=sg?(t-sg.start):0;
-  var trName=sg?sg.trans:"none";
-  var TRd=Math.min((sg&&sg.trDur!=null?sg.trDur:0.5),(sg?(sg.end-sg.start)*0.5:0));
-  var inTrans=(sg&&prev&&TRd>0&&into<TRd&&trName!=="cut"&&trName!=="none");
+  /* Option A : la transition se RESOUT sur le temps -> joue sur [coupe-TRd, coupe] ; image suivante en place PILE sur le beat. */
+  var next=(idx>=0 && idx+1<SEGS.length)?SEGS[idx+1]:null;
+  var trName=next?next.trans:"none";
+  var TRd=(next&&trName!=="cut"&&trName!=="none")?Math.min((next.trDur!=null?next.trDur:0.5),(sg?(sg.end-sg.start)*0.5:0)):0;
+  var preStart=next?(next.start-TRd):Infinity;
+  var inTrans=(sg&&next&&TRd>0&&t>=preStart&&t<next.start);
+  var trProg=inTrans?((t-preStart)/TRd):0;
   if(sg && sg.video && sg.vclip!=null && CLIPS[sg.vclip] && CLIPS[sg.vclip].ready){ if(VIDACT!==idx){ VIDACT=idx; for(var _c=0;_c<CLIPS.length;_c++){ if(_c!==sg.vclip){ try{ CLIPS[_c].el.pause(); }catch(e){} } } try{ CLIPS[sg.vclip].el.currentTime=sg.vstart||0; }catch(e){} var _pv=CLIPS[sg.vclip].el.play(); if(_pv&&_pv.then) _pv.catch(function(){}); } } else if(VIDACT>=0){ VIDACT=-1; for(var _c2=0;_c2<CLIPS.length;_c2++){ try{ CLIPS[_c2].el.pause(); }catch(e){} } }
   var strongPulse=(sg&&sg.strong&&into<0.10)?(1-into/0.10):0;
   _atmo=sg?(sg.atmo||null):null; _atmoAmt=(ATMO_AMT[MOOD]!=null?ATMO_AMT[MOOD]:0.6);
   if(glReady && TR.ready && inTrans){
-    drawSegAt(prev,prev.end-0.001,0,1); trUpload(TR.texFrom);
-    drawSegAt(sg,t,0,1); trUpload(TR.texTo);
-    trMix(trName,into/TRd,sg);
+    drawSegAt(sg,t,0,1); trUpload(TR.texFrom);
+    drawSegAt(next,next.start,0,1); trUpload(TR.texTo);
+    trMix(trName,trProg,next);
     drawGL(t,strongPulse,TR.fbo.tex);
   } else {
     var r=renderBaseFrame(t);
@@ -7265,15 +7270,19 @@ function renderMontageAt(t){
   var idx=-1; for(var i=0;i<SEGS.length;i++){ if(t>=SEGS[i].start && t<SEGS[i].end){ idx=i; break; } }
   if(idx<0 && SEGS.length) idx=(t<SEGS[0].start)?0:SEGS.length-1;
   var sg=(idx>=0)?SEGS[idx]:null, prev=(idx>0)?SEGS[idx-1]:null, into=sg?(t-sg.start):0;
-  var trName=sg?sg.trans:"none";
-  var TRd=Math.min((sg&&sg.trDur!=null?sg.trDur:0.5),(sg?(sg.end-sg.start)*0.5:0));
-  var inTrans=(sg&&prev&&TRd>0&&into<TRd&&trName!=="cut"&&trName!=="none");
+  /* Option A : la transition se RESOUT sur le temps -> joue sur [coupe-TRd, coupe] ; image suivante en place PILE sur le beat. */
+  var next=(idx>=0 && idx+1<SEGS.length)?SEGS[idx+1]:null;
+  var trName=next?next.trans:"none";
+  var TRd=(next&&trName!=="cut"&&trName!=="none")?Math.min((next.trDur!=null?next.trDur:0.5),(sg?(sg.end-sg.start)*0.5:0)):0;
+  var preStart=next?(next.start-TRd):Infinity;
+  var inTrans=(sg&&next&&TRd>0&&t>=preStart&&t<next.start);
+  var trProg=inTrans?((t-preStart)/TRd):0;
   var strongPulse=(sg&&sg.strong&&into<0.10)?(1-into/0.10):0;
   _atmo=sg?(sg.atmo||null):null; _atmoAmt=(ATMO_AMT[MOOD]!=null?ATMO_AMT[MOOD]:0.6);
   if(glReady && TR.ready && inTrans){
-    drawSegAt(prev,prev.end-0.001,0,1); trUpload(TR.texFrom);
-    drawSegAt(sg,t,0,1); trUpload(TR.texTo);
-    trMix(trName,into/TRd,sg);
+    drawSegAt(sg,t,0,1); trUpload(TR.texFrom);
+    drawSegAt(next,next.start,0,1); trUpload(TR.texTo);
+    trMix(trName,trProg,next);
     drawGL(t,strongPulse,TR.fbo.tex);
   } else { var r=renderBaseFrame(t); if(glReady) drawGL(t,r.strongPulse); }
 }
@@ -7413,8 +7422,21 @@ essentiaReady.then(function(ok){ if(!ok && !A){ /* silencieux : le repli se fait
     if(hp) hp.innerHTML=pl?PAUSE_HERO:PLAY_HERO;
     if(wb) wb.innerHTML=pl?(PAUSE_S+" Pause"):(PLAY_S+" Lire le film");
   }
-  function relayPlay(){ var p=$("play"); if(p) p.click(); setTimeout(refreshPlay,40); }
+  function relayPlay(){ var p=$("play"); if(p) p.click(); setTimeout(function(){ refreshPlay(); if((typeof playing!=="undefined")&&playing) armHide(); else forceChrome(); },40); }
   ["heroPlay","watchBtn"].forEach(function(id){ var b=$(id); if(b) b.onclick=relayPlay; });
+
+  /* ---------- 3b) Contrôles vidéo qui s'auto-masquent (comme un lecteur) ---------- */
+  var _chromeT=null, _wasPlaying=false;
+  function armHide(){ clearTimeout(_chromeT); if((typeof playing!=="undefined")&&playing){ _chromeT=setTimeout(function(){ if((typeof playing!=="undefined")&&playing&&hero) hero.classList.add("chrome-hidden"); },2600); } }
+  function showChrome(){ if(hero) hero.classList.remove("chrome-hidden"); armHide(); }
+  function forceChrome(){ clearTimeout(_chromeT); if(hero) hero.classList.remove("chrome-hidden"); }
+  if(hero){
+    hero.addEventListener("click",function(e){
+      if(e.target && e.target.closest && e.target.closest(".play-main,.hero-top,.hero-copy")) return;
+      if(hero.classList.contains("chrome-hidden")) showChrome();
+      else if((typeof playing!=="undefined")&&playing){ if(hero) hero.classList.add("chrome-hidden"); }
+    });
+  }
 
   /* ---------- 4) Feuilles (sources / ambiance / export) ---------- */
   function openSheet(n){ var s=q('.sheet-bg[data-bg="'+n+'"]'); if(s) s.classList.add("show"); }
@@ -7583,6 +7605,10 @@ essentiaReady.then(function(ok){ if(!ok && !A){ /* silencieux : le repli se fait
         if(seqH3) seqH3.textContent="S\u00c9QUENCE";
       }
       if(showAll) showAll.style.display=hasA?"":"none";
+      var _pl=(typeof playing!=="undefined")&&playing;
+      if(_pl&&!_wasPlaying) armHide();
+      if(!_pl&&_wasPlaying) forceChrome();
+      _wasPlaying=_pl;
       refreshPlay();
       mirrorSync();
     }catch(e){}
